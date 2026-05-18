@@ -234,10 +234,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
-}
+//if (builder.Environment.IsDevelopment())
+//{
+//    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+//}
 
 AddEmailConfig(builder.Services, builder.Configuration);
 
@@ -264,5 +264,6 @@ app.UseAuthorization();
 app.UseMiddleware<ExceptionHandler>();
 app.UseMiddleware<JwtMiddleware>();
 app.MapControllers();
-
+app.UseSwagger();
+app.UseSwaggerUI();
 app.Run();
