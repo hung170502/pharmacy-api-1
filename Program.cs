@@ -38,8 +38,8 @@ builder.Services.Configure<AppSettings>(builder.Configuration);
 
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-builder.Services.AddDbContext<AccountContext>(options =>
-    options.UseSqlServer(connectionString));
+//builder.Services.AddDbContext<AccountContext>(options =>
+//    options.UseSqlServer(connectionString));
 builder.Services.AddDbContext<AccountContext>(options =>
     options.UseNpgsql(connectionString));
 using var scope = builder.Services.BuildServiceProvider().CreateScope();
