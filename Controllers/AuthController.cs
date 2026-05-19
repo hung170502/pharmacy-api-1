@@ -307,27 +307,26 @@ namespace Pharmacy_API.Controllers
         #endregion
 
         [HttpGet("google/callback")]
-        public async Task<IActionResult> GoogleCallback([FromQuery] string code)
+        public async Task<IActionResult> GoogleCallback(
+     [FromQuery] string code,
+     [FromQuery] string? state = null) // ✅ Thêm state
         {
+            Console.WriteLine($"[GoogleCallback] state={state}"); // ✅ Debug log
+
             if (string.IsNullOrEmpty(code))
                 return BadRequest("Authorization code not provided");
 
-            // 1. Đổi Authorization Code lấy Access Token
             var tokenResponse = await _authManagerService.ExchangeCodeForTokenAsync(code);
-
             if (tokenResponse == null)
                 return BadRequest("Failed to exchange code for token");
 
-            // 2. Lấy thông tin người dùng từ Access Token
             var userProfile = await _authManagerService.GetGoogleUserProfileAsync(tokenResponse.IdToken);
-
             if (userProfile == null)
                 return BadRequest("Failed to retrieve user profile");
 
             var user = await _userManager.FindByEmailAsync(userProfile.Email);
             if (user == null)
             {
-                // 4. Nếu chưa tồn tại, tạo tài khoản mới
                 user = new ApplicationUser
                 {
                     UserName = userProfile.Email,
@@ -337,27 +336,25 @@ namespace Pharmacy_API.Controllers
                     EmailConfirmed = true,
                     Address = userProfile.Issuer
                 };
-
                 var result = await _userManager.CreateAsync(user);
-
                 if (!result.Succeeded)
                 {
                     return StatusCode(StatusCodes.Status400BadRequest,
                         result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description })
                         .First());
                 }
-
-                //await _authManagerService.RequestEmailActivation(user);
             }
 
             await _distributedCache.RemoveAsync(user.Email ?? string.Empty);
             var claims = await _jwtAuthManager.GetUserClaims(user);
             var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.Now);
-            await _distributedCache.SetStringAsync(user.Email ?? string.Empty, jwtResult.AccessToken, new DistributedCacheEntryOptions
-            {
-                AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
-
-            });
+            await _distributedCache.SetStringAsync(
+                user.Email ?? string.Empty,
+                jwtResult.AccessToken,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
+                });
 
             await _userManager.SetAuthenticationTokenAsync(
                 user,
@@ -365,6 +362,23 @@ namespace Pharmacy_API.Controllers
                 _appSettings.Jwt.RefreshTokenName,
                 jwtResult.RefreshToken);
 
+            // ✅ Nếu có state → redirect về app deep link
+            if (!string.IsNullOrEmpty(state))
+            {
+                Console.WriteLine($"[GoogleCallback] Redirecting to app: {state}");
+                var appDeepLink = Uri.UnescapeDataString(state);
+                var deepLinkUrl = $"{appDeepLink}" +
+                                  $"?accessToken={Uri.EscapeDataString(jwtResult.AccessToken)}" +
+                                  $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
+                                  $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
+                                  $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
+                                  $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
+
+                return Redirect(deepLinkUrl);
+            }
+
+            // Fallback: Swagger/web → trả JSON
+            Console.WriteLine($"[GoogleCallback] No state — returning JSON");
             return Ok(new LoginResponseDto()
             {
                 Data = new UserDataDto()
