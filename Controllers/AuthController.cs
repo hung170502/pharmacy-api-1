@@ -179,7 +179,7 @@ namespace Pharmacy_API.Controllers
                     _appSettings.Jwt.RefreshTokenName,
                     jwtResult.RefreshToken);
 
-                //await _authManagerService.RequestEmailActivation(user);
+                await _authManagerService.RequestEmailActivation(user);
                 await _authManagerService.SendOtpAsync(user.Email);
 
                 var loggedInUser = new
@@ -311,7 +311,7 @@ namespace Pharmacy_API.Controllers
      [FromQuery] string code,
      [FromQuery] string? state = null) // ✅ Thêm state
         {
-            Console.WriteLine($"[GoogleCallback] state={state}"); // ✅ Debug log
+            
 
             if (string.IsNullOrEmpty(code))
                 return BadRequest("Authorization code not provided");
@@ -378,7 +378,6 @@ namespace Pharmacy_API.Controllers
             }
 
             // Fallback: Swagger/web → trả JSON
-            Console.WriteLine($"[GoogleCallback] No state — returning JSON");
             return Ok(new LoginResponseDto()
             {
                 Data = new UserDataDto()
