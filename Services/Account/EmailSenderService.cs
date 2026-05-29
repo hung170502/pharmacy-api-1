@@ -39,19 +39,32 @@ namespace Pharmacy_API.Services.Account
         /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task<bool> SendEmailAsync(string email, string subject, string message)
         {
-            using (MailMessage mailMessage = new MailMessage())
+            try
             {
-                mailMessage.From = new MailAddress(_appSettings.MailSettings.Mail, _appSettings.MailSettings.DisplayName);
-                mailMessage.To.Add(email);
-                mailMessage.Subject = subject;
-                mailMessage.Body = message;
-                mailMessage.IsBodyHtml = true;
+                using (MailMessage mailMessage = new MailMessage())
+                {
+                    mailMessage.From = new MailAddress(
+                        _appSettings.MailSettings.Mail,
+                        _appSettings.MailSettings.DisplayName
+                    );
 
-                await _smtpClient.SendMailAsync(mailMessage);
-                _logger.LogInformation("Email sent successfully!");
+                    mailMessage.To.Add(email);
+                    mailMessage.Subject = subject;
+                    mailMessage.Body = message;
+                    mailMessage.IsBodyHtml = true;
+
+                    await _smtpClient.SendMailAsync(mailMessage);
+
+                    _logger.LogInformation("Email sent successfully!");
+                }
+
+                return true;
             }
-
-            return true;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Send email failed");
+                throw;
+            }
         }
         #endregion
 
