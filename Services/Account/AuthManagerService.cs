@@ -270,6 +270,11 @@ namespace Pharmacy_API.Services.Account
             }
         }
 
+        public Task RequestEmailActivation(ApplicationUser user)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
 
     }
