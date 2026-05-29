@@ -62,8 +62,10 @@ namespace Pharmacy_API.Services.Account
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Send email failed");
-                throw;
+                _logger.LogError($"EMAIL ERROR: {ex.Message}");
+                _logger.LogError(ex.StackTrace);
+
+                return false;
             }
         }
         #endregion
