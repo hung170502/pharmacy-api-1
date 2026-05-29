@@ -12,7 +12,7 @@ namespace Pharmacy_API.Services.Account
     {
         Task<GoogleTokenResponse> ExchangeCodeForTokenAsync(string code);
         Task<GoogleJsonWebSignature.Payload> GetGoogleUserProfileAsync(string accessToken);
-        Task RequestEmailActivation(ApplicationUser user);
+        Task<bool> RequestEmailActivation(ApplicationUser user);
 
         Task<bool> SendOtpAsync(string email);
         Task<bool> VerifyOtpAsync(string email, string code);
