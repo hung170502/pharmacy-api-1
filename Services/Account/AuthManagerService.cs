@@ -172,36 +172,36 @@ namespace Pharmacy_API.Services.Account
         }
         #endregion
 
-        #region Function
-        /// <summary>
-        /// Sends an email to the user requesting their email to be activated.
-        /// </summary>
-        /// <param name="user">The user to send an activation email to.</param>
-        /// <returns>A Task representing the asynchronous operation.</returns>
-        public async Task<bool> RequestEmailActivation(ApplicationUser user)
-        {
-            string code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        //#region Function
+        ///// <summary>
+        ///// Sends an email to the user requesting their email to be activated.
+        ///// </summary>
+        ///// <param name="user">The user to send an activation email to.</param>
+        ///// <returns>A Task representing the asynchronous operation.</returns>
+        //public async Task<bool> RequestEmailActivation(ApplicationUser user)
+        //{
+        //    string code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            string link = $"{_appSettings.DeepLinksSettings.BaseUrl + _appSettings.DeepLinksSettings.VerifyRegisterUser}?email={user.Email}&activationToken={code.ToBase64()}";
+        //    string link = $"{_appSettings.DeepLinksSettings.BaseUrl + _appSettings.DeepLinksSettings.VerifyRegisterUser}?email={user.Email}&activationToken={code.ToBase64()}";
 
-            string emailContent = $"Thanks for subscribing to {_appSettings.Jwt.AppName}!" +
-                $"<br/><br/>" +
-                $"To activate your email, please click on one of the below links: " +
-                $"<br/><br/>" +
-                $"<a href=\"{link}\">Activation Link</a>" +
-                $"<br/><br/>" +
-                $"<a href=\"{link}\">{link}</a>" +
-                $"<br/><br/>" +
-                $"{_appSettings.Jwt.AppName} Team";
+        //    string emailContent = $"Thanks for subscribing to {_appSettings.Jwt.AppName}!" +
+        //        $"<br/><br/>" +
+        //        $"To activate your email, please click on one of the below links: " +
+        //        $"<br/><br/>" +
+        //        $"<a href=\"{link}\">Activation Link</a>" +
+        //        $"<br/><br/>" +
+        //        $"<a href=\"{link}\">{link}</a>" +
+        //        $"<br/><br/>" +
+        //        $"{_appSettings.Jwt.AppName} Team";
 
-            await _emailSender.SendEmailAsync(user.Email ?? string.Empty, "Email Activation", emailContent);
+        //    await _emailSender.SendEmailAsync(user.Email ?? string.Empty, "Email Activation", emailContent);
 
-            _logger.LogInformation($"An activation email was sent to {user.Email}");
+        //    _logger.LogInformation($"An activation email was sent to {user.Email}");
 
-            return true;
+        //    return true;
 
-        }
-        #endregion
+        //}
+        //#endregion
 
         #region Google ExchangeCodeForToken
         public async Task<GoogleTokenResponse> ExchangeCodeForTokenAsync(string code)
