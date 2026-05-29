@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
+﻿
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Pharmacy_API.Context;
 using Pharmacy_API.MapperProfiles.Account;
 using Pharmacy_API.Models.Account;
@@ -26,32 +27,33 @@ using System.Net;
 using System.Net.Mail;
 using System.Text;
 using System.Text.Json.Serialization;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<AppSettings>(builder.Configuration);
 
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-//builder.Services.AddDbContext<AccountContext>(options =>
-//    options.UseSqlServer(connectionString));
 builder.Services.AddDbContext<AccountContext>(options =>
     options.UseNpgsql(connectionString));
+
 using var scope = builder.Services.BuildServiceProvider().CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AccountContext>();
 dbContext.Database.Migrate();
 
-// ✅ FIX CORS: AllowAll cho dev (điện thoại + Swagger đều dùng được)
+#region CORS
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        var allowedOrigins = builder.Configuration["AllowOrigins"]?.Split(",") ?? Array.Empty<string>();
+        var allowedOrigins =
+            builder.Configuration["AllowOrigins"]?.Split(",")
+            ?? Array.Empty<string>();
+
         policy.WithOrigins(allowedOrigins)
               .WithMethods("POST", "GET", "PUT", "DELETE")
               .AllowAnyHeader();
@@ -65,48 +67,86 @@ builder.Services.AddCors(options =>
     });
 });
 
+#endregion
+
+#region JWT
+
 var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme =
+        JwtBearerDefaults.AuthenticationScheme;
+
+    options.DefaultScheme =
+        JwtBearerDefaults.AuthenticationScheme;
+
+    options.DefaultChallengeScheme =
+        JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // ✅ Cho phép HTTP
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidAudience = jwtAudience,
-        ValidIssuer = jwtIssuer,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? string.Empty)),
-        ClockSkew = TimeSpan.FromMinutes(5)
-    };
+
+    options.RequireHttpsMetadata = false;
+
+    options.TokenValidationParameters =
+        new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidAudience = jwtAudience,
+            ValidIssuer = jwtIssuer,
+
+            IssuerSigningKey =
+                new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(jwtKey ?? string.Empty)
+                ),
+
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
         {
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogError("Authentication failed: {Exception}", context.Exception);
+            var logger =
+                context.HttpContext.RequestServices
+                .GetRequiredService<ILogger<Program>>();
+
+            logger.LogError(
+                "Authentication failed: {Exception}",
+                context.Exception
+            );
+
             return Task.CompletedTask;
         },
+
         OnChallenge = context =>
         {
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning("Token validation failed. Error: {Error}, Description: {ErrorDescription}",
-                context.Error, context.ErrorDescription);
+            var logger =
+                context.HttpContext.RequestServices
+                .GetRequiredService<ILogger<Program>>();
+
+            logger.LogWarning(
+                "Token validation failed. Error: {Error}, Description: {ErrorDescription}",
+                context.Error,
+                context.ErrorDescription
+            );
+
             return Task.CompletedTask;
         }
     };
 });
+
+#endregion
+
+#region Identity
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
@@ -115,87 +155,117 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddRoles<Role>()
 .AddEntityFrameworkStores<AccountContext>()
 .AddSignInManager()
-.AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(builder.Configuration["Jwt:AppName"] ?? string.Empty);
+.AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(
+    builder.Configuration["Jwt:AppName"] ?? string.Empty
+);
+
+#endregion
+
+#region Swagger
 
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Ho Ngoc Hung",
+        Title = "Pharmacy API",
         Version = "v1",
         Description = "API Pharmacy"
     });
-    options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
-    {
-        Description = @"JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below. Example: 'Bearer 12345abcdef'",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = JwtBearerDefaults.AuthenticationScheme
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+
+    options.AddSecurityDefinition(
+        JwtBearerDefaults.AuthenticationScheme,
+        new OpenApiSecurityScheme
         {
-            new OpenApiSecurityScheme
+            Description =
+                @"JWT Authorization header using the Bearer scheme.
+                Enter 'Bearer' [space] and then your token below.",
+
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = JwtBearerDefaults.AuthenticationScheme
+        });
+
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
             {
-                Reference = new OpenApiReference
+                new OpenApiSecurityScheme
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = JwtBearerDefaults.AuthenticationScheme
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = JwtBearerDefaults.AuthenticationScheme
+                    }
                 },
-                Scheme = JwtBearerDefaults.AuthenticationScheme,
-                Name = "Authorization",
-                In = ParameterLocation.Header
-            },
-            new List<string>()
-        }
-    });
+                new List<string>()
+            }
+        });
 });
 
-builder.Services.AddScoped<System.Net.Mail.SmtpClient>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var smtpClient = new System.Net.Mail.SmtpClient(configuration["Smtp:Host"])
-    {
-        Port = int.Parse(configuration["Smtp:Port"] ?? "25"),
-        Credentials = new System.Net.NetworkCredential(
-            configuration["Smtp:Username"],
-            configuration["Smtp:Password"]
-        ),
-        EnableSsl = bool.Parse(configuration["Smtp:EnableSsl"] ?? "false")
-    };
-    return smtpClient;
-});
+#endregion
+
+#region Email Config
 
 void AddEmailConfig(IServiceCollection services, IConfiguration configuration)
 {
-    services.AddScoped<ISmtpClient, SmtpClientWrapper>((provider) =>
+    services.AddScoped<ISmtpClient>(provider =>
     {
-        var port = configuration.GetValue<int>("MailSettings:Port", 587);
-        var smtpClient = new SmtpClient(configuration["MailSettings:Host"], port)
+        var port =
+            configuration.GetValue<int>("MailSettings:Port", 587);
+
+        var smtpClient = new SmtpClient(
+            configuration["MailSettings:Host"],
+            port
+        )
         {
             UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(configuration["MailSettings:Mail"], configuration["MailSettings:Password"]),
-            EnableSsl = configuration.GetValue<bool>("MailSettings:EnableSsl", true)
+
+            Credentials = new NetworkCredential(
+                configuration["MailSettings:Mail"],
+                configuration["MailSettings:Password"]
+            ),
+
+            EnableSsl =
+                configuration.GetValue<bool>(
+                    "MailSettings:EnableSsl",
+                    true
+                )
         };
+
         return new SmtpClientWrapper(smtpClient);
     });
 }
+
+AddEmailConfig(builder.Services, builder.Configuration);
+
+#endregion
+
+#region Compression
 
 builder.Services.Configure<GzipCompressionProviderOptions>(options =>
 {
     options.Level = CompressionLevel.Fastest;
 });
+
 builder.Services.AddResponseCompression(options =>
 {
     options.Providers.Add<GzipCompressionProvider>();
 });
+
+#endregion
+
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+
 builder.Services.AddDistributedMemoryCache();
 
-builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+builder.Services.AddAutoMapper(
+    typeof(AutoMapperProfile).Assembly
+);
 
-// Repositories - Account
+#region Repositories
+
+// Account
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPolicyRepository, PolicyRepository>();
 builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
@@ -204,13 +274,17 @@ builder.Services.AddScoped<IPolicyPermissionRepository, PolicyPermissionReposito
 builder.Services.AddScoped<IRolePolicyRepository, RolePolicyRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
-// Repositories - Catalog
+// Catalog
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<ICountryRepository, CountryRepository>();
 builder.Services.AddScoped<IUnitRepository, UnitRepository>();
 
-// Services - Account
+#endregion
+
+#region Services
+
+// Account
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPolicyService, PolicyService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
@@ -219,31 +293,28 @@ builder.Services.AddScoped<IJwtAuthManagerService, JwtAuthManagerService>();
 builder.Services.AddScoped<IAuthManagerService, AuthManagerService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IUpdateUserService, UpdateUserService>();
-builder.Services.AddScoped<ISmtpClient, SmtpClientWrapper>();
-builder.Services.AddScoped<RoleManager<Role>>();
 
-// Services - Catalog
+// Catalog
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<ICountryService, CountryService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
+#endregion
 
-//if (builder.Environment.IsDevelopment())
-//{
-//    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
-//}
-
-AddEmailConfig(builder.Services, builder.Configuration);
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters
+            .Add(new JsonStringEnumConverter());
+    });
 
 var app = builder.Build();
 
-// ✅ FIX: Dùng AllowAll cho dev để điện thoại gọi được
+#region Middleware
+
 app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
@@ -254,16 +325,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
-// ✅ FIX: BỎ UseHttpsRedirection — đang dùng HTTP thuần, redirect này gây lỗi trên điện thoại
-// app.UseHttpsRedirection();
-
 app.UseRouting();
+
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.UseMiddleware<ExceptionHandler>();
+
 app.UseMiddleware<JwtMiddleware>();
+
 app.MapControllers();
-app.UseSwagger();
-app.UseSwaggerUI();
+
+#endregion
+
 app.Run();
+
