@@ -146,7 +146,17 @@ namespace Pharmacy_API.Services.Account
 </body>
 </html>
                 ";
-            await _emailSender.SendEmailAsync(email, "OTP Verification", emailContent);
+            var result = await _emailSender.SendEmailAsync(
+    email,
+    "OTP Verification",
+    emailContent
+);
+
+            if (!result)
+            {
+                _logger.LogError($"Failed to send OTP to {email}");
+                return false;
+            }
 
             _logger.LogInformation($"OTP sent to {email}");
 

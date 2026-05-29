@@ -62,8 +62,7 @@ namespace Pharmacy_API.Services.Account
             }
             catch (Exception ex)
             {
-                _logger.LogError($"EMAIL ERROR: {ex.Message}");
-                _logger.LogError(ex.StackTrace);
+                _logger.LogError(ex, "EMAIL ERROR");
 
                 return false;
             }
