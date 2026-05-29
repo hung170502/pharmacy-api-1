@@ -115,8 +115,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddRoles<Role>()
 .AddEntityFrameworkStores<AccountContext>()
 .AddSignInManager()
-.AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(builder.Configuration["Jwt:AppName"] ?? string.Empty);
-
+.AddDefaultTokenProviders();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
