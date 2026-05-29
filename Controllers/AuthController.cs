@@ -180,7 +180,7 @@ namespace Pharmacy_API.Controllers
                     jwtResult.RefreshToken);
 
                 //await _authManagerService.RequestEmailActivation(user);
-                await _authManagerService.SendOtpAsync(user.Email);
+                //await _authManagerService.SendOtpAsync(user.Email);
 
                 var loggedInUser = new
                 {
