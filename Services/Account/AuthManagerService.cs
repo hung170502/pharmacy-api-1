@@ -270,8 +270,6 @@ namespace Pharmacy_API.Services.Account
             }
         }
 
-       
-
         #endregion
 
     }
