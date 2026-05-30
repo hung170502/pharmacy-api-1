@@ -22,6 +22,7 @@ using Pharmacy_API.Services.Country;
 using Pharmacy_API.Services.Product;
 using Pharmacy_API.Services.Unit;
 using Pharmacy_API.Supports;
+using Resend;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Mail;
@@ -241,15 +242,15 @@ builder.Services.AddSwaggerGen(options =>
 
 //#endregion
 
-#region Email Config
+#region Email Config - Resend
 
-void AddEmailConfig(IServiceCollection services, IConfiguration configuration)
+// ResendClient cần HttpClient và Options
+builder.Services.AddHttpClient<IResend, ResendClient>();
+builder.Services.Configure<ResendClientOptions>(options =>
 {
-    // Đăng ký SmtpClientWrapper trực tiếp - nó sẽ tự tạo SmtpClient khi cần
-    services.AddScoped<ISmtpClient, SmtpClientWrapper>();
-}
-
-AddEmailConfig(builder.Services, builder.Configuration);
+    options.ApiToken = Environment.GetEnvironmentVariable("Resend__ApiKey") ?? "";
+});
+builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 
 #endregion
 
