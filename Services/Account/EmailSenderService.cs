@@ -72,7 +72,9 @@
 
 //    }
 //}
-using Resend;
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Pharmacy_API.Supports;
@@ -82,44 +84,72 @@ namespace Pharmacy_API.Services.Account
     public class EmailSenderService : IEmailSenderService
     {
         private readonly ILogger _logger;
-        private readonly IResend _resend;
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
         private readonly string _fromEmail;
         private readonly string _fromName;
 
         public EmailSenderService(
             IOptions<AppSettings> appSettings,
             ILogger<EmailSenderService> logger,
-            IResend resend)
+            HttpClient httpClient)
         {
             _logger = logger;
-            _resend = resend;
+            _httpClient = httpClient;
+            _apiKey = Environment.GetEnvironmentVariable("Brevo__ApiKey");
             _fromEmail = appSettings.Value.MailSettings.Mail;
             _fromName = appSettings.Value.MailSettings.DisplayName;
-            _logger.LogInformation($"Resend initialized with from: {_fromEmail}");
+            _logger.LogInformation($"Brevo initialized with from: {_fromEmail}");
         }
 
         public async Task<bool> SendEmailAsync(string email, string subject, string message)
         {
             try
             {
-                _logger.LogInformation($"📨 Sending email via Resend to {email}");
+                _logger.LogInformation($"📨 Sending email via Brevo to {email}");
 
-                var msg = new EmailMessage
+                var payload = new
                 {
-                    From = $"{_fromName} <{_fromEmail}>",
-                    To = new EmailAddressList { email },  // ✅ Sửa ở đây
-                    Subject = subject,
-                    HtmlBody = message
+                    sender = new
+                    {
+                        email = _fromEmail,
+                        name = _fromName
+                    },
+                    to = new[] {
+                        new { email = email }
+                    },
+                    subject = subject,
+                    htmlContent = message
                 };
 
-                await _resend.EmailSendAsync(msg);
+                var json = JsonConvert.SerializeObject(payload);
+                var request = new HttpRequestMessage(
+                    HttpMethod.Post,
+                    "https://api.brevo.com/v3/smtp/email"
+                )
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+                request.Headers.Add("api-key", _apiKey);
+                request.Headers.Add("accept", "application/json");
 
-                _logger.LogInformation($"✅ Email sent successfully to {email}");
-                return true;
+                var response = await _httpClient.SendAsync(request);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"✅ Email sent successfully to {email}");
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError($"❌ Brevo failed: {response.StatusCode} - {responseBody}");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"❌ Resend error: {ex.Message}");
+                _logger.LogError($"❌ Brevo error: {ex.Message}");
                 return false;
             }
         }

@@ -242,15 +242,10 @@ builder.Services.AddSwaggerGen(options =>
 
 //#endregion
 
-#region Email Config - Resend
+#region Email Config - Brevo
 
-// ResendClient cần HttpClient và Options
-builder.Services.AddHttpClient<IResend, ResendClient>();
-builder.Services.Configure<ResendClientOptions>(options =>
-{
-    options.ApiToken = Environment.GetEnvironmentVariable("Resend__ApiKey") ?? "";
-});
-builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
+// Đăng ký HttpClient và EmailSenderService
+builder.Services.AddHttpClient<IEmailSenderService, EmailSenderService>();
 
 #endregion
 
