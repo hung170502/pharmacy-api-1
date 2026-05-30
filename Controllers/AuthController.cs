@@ -172,9 +172,10 @@ namespace Pharmacy_API.Controllers
 
             if (result.Succeeded)
             {
+                await _userManager.AddToRoleAsync(user, "Customer");
                 var claims = await _jwtAuthManager.GetUserClaims(user);
 
-                var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.Now);
+                var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.UtcNow);
 
                 //save in db
                 await _userManager.SetAuthenticationTokenAsync(
@@ -183,7 +184,7 @@ namespace Pharmacy_API.Controllers
                     _appSettings.Jwt.RefreshTokenName,
                     jwtResult.RefreshToken);
 
-                //await _authManagerService.RequestEmailActivation(user);
+                var roles = await _userManager.GetRolesAsync(user);  // ✅ Lấy roles
                 await _authManagerService.SendOtpAsync(user.Email);
 
                 var loggedInUser = new
@@ -191,7 +192,8 @@ namespace Pharmacy_API.Controllers
                     Email = request.Email,
                     AccessToken = jwtResult.AccessToken,
                     RefreshToken = jwtResult.RefreshToken,
-                    UserId = user.Id
+                    UserId = user.Id,
+                    Roles = roles.ToList()
                 };
 
                 return Ok(loggedInUser);
@@ -201,96 +203,6 @@ namespace Pharmacy_API.Controllers
                 result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description })
                 .First());
         }
-
-
-        #region Test & Debug
-
-        [HttpGet("TestEmailConfig")]
-        [AllowAnonymous]
-        public async Task<IActionResult> TestEmailConfig([FromQuery] string testEmail)
-        {
-            if (string.IsNullOrEmpty(testEmail))
-            {
-                return BadRequest(new { Error = "Please provide testEmail parameter" });
-            }
-
-            try
-            {
-                _logger.LogInformation($"🧪 Starting email configuration test to {testEmail}");
-                _logger.LogInformation($"📋 SMTP Settings - Host: {_appSettings.MailSettings.Host}, Port: {_appSettings.MailSettings.Port}");
-                _logger.LogInformation($"📋 From: {_appSettings.MailSettings.Mail}, Display Name: {_appSettings.MailSettings.DisplayName}");
-
-                var result = await _emailSender.SendEmailAsync(
-                    testEmail,
-                    "Test Email - Pharmacy API Configuration",
-                    $@"
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset=""UTF-8""></head>
-            <body style=""font-family: Arial, sans-serif; padding: 20px;"">
-                <h1 style=""color: #2563eb;"">✅ Email Configuration Test</h1>
-                <p>If you receive this email, your SMTP configuration is working correctly!</p>
-                <hr>
-                <h3>Configuration Details:</h3>
-                <ul>
-                    <li><strong>SMTP Host:</strong> {_appSettings.MailSettings.Host}</li>
-                    <li><strong>SMTP Port:</strong> {_appSettings.MailSettings.Port}</li>
-                    <li><strong>From Email:</strong> {_appSettings.MailSettings.Mail}</li>
-                    <li><strong>Time:</strong> {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</li>
-                </ul>
-            </body>
-            </html>"
-                );
-
-                return Ok(new
-                {
-                    Success = result,
-                    TestEmail = testEmail,
-                    SmtpHost = _appSettings.MailSettings.Host,
-                    SmtpPort = _appSettings.MailSettings.Port,
-                    FromEmail = _appSettings.MailSettings.Mail,
-                    Message = result ? "Email sent successfully!" : "Failed to send email. Check logs for details."
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"❌ Test email failed: {ex.Message}");
-                return BadRequest(new
-                {
-                    Error = ex.Message,
-                    InnerError = ex.InnerException?.Message,
-                    StackTrace = ex.StackTrace
-                });
-            }
-        }
-
-        [HttpGet("TestOtpGeneration")]
-        [AllowAnonymous]
-        public async Task<IActionResult> TestOtpGeneration([FromQuery] string email)
-        {
-            if (string.IsNullOrEmpty(email))
-            {
-                return BadRequest(new { Error = "Please provide email parameter" });
-            }
-
-            try
-            {
-                var result = await _authManagerService.SendOtpAsync(email);
-
-                return Ok(new
-                {
-                    Success = result,
-                    Email = email,
-                    Message = result ? "OTP generated and sent successfully" : "Failed to send OTP"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        #endregion
 
 
         [HttpPost]
@@ -458,6 +370,9 @@ namespace Pharmacy_API.Controllers
                     return StatusCode(StatusCodes.Status400BadRequest,
                         result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
                 }
+
+                // ✅ TỰ ĐỘNG GÁN ROLE "Customer" CHO USER MỚI ĐĂNG KÝ QUA GOOGLE
+                await _userManager.AddToRoleAsync(user, "Customer");
             }
 
             // Tạo token
@@ -475,10 +390,13 @@ namespace Pharmacy_API.Controllers
             await _userManager.SetAuthenticationTokenAsync(
                 user, _appSettings.Jwt.AppName, _appSettings.Jwt.RefreshTokenName, jwtResult.RefreshToken);
 
+            // Lấy roles của user
+            var roles = await _userManager.GetRolesAsync(user);
+
             // ✅ Tự động detect platform từ state
             var decodedState = !string.IsNullOrEmpty(state) ? Uri.UnescapeDataString(state) : "";
 
-            // Mobile App: state = "antamvietpharmacy://auth/callback"
+            // Mobile App
             if (decodedState.StartsWith("antamvietpharmacy://"))
             {
                 var deepLinkUrl = $"{decodedState}" +
@@ -486,12 +404,13 @@ namespace Pharmacy_API.Controllers
                     $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
                     $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
                     $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
-                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
+                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}" +
+                    $"&roles={Uri.EscapeDataString(string.Join(",", roles))}";
 
                 return Redirect(deepLinkUrl);
             }
 
-            // Web: state = "http://localhost:3000/auth/google/callback"
+            // Web
             if (decodedState.StartsWith("http"))
             {
                 var webRedirectUrl = $"{decodedState}" +
@@ -499,12 +418,13 @@ namespace Pharmacy_API.Controllers
                     $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
                     $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
                     $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
-                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
+                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}" +
+                    $"&roles={Uri.EscapeDataString(string.Join(",", roles))}";
 
                 return Redirect(webRedirectUrl);
             }
 
-            // Fallback: Trả JSON
+            // Fallback
             return Ok(new LoginResponseDto
             {
                 Data = new UserDataDto
@@ -514,7 +434,8 @@ namespace Pharmacy_API.Controllers
                     RefreshToken = jwtResult.RefreshToken,
                     Name = user.UserName ?? string.Empty,
                     Phone = user.PhoneNumber ?? string.Empty,
-                    UserId = user.Id
+                    UserId = user.Id,
+                    Roles = roles.ToList()
                 }
             });
         }
