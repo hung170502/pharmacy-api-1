@@ -19,7 +19,10 @@ namespace Pharmacy_API.Models.Account
         [StringLength(36)]
         public string PermissionId { get; set; } = string.Empty;
 
+        [ForeignKey("PolicyId")]
         public virtual Policy Policy { get; set; } = null!;
+
+        [ForeignKey("PermissionId")]
         public virtual Permission Permission { get; set; } = null!;
     }
 }

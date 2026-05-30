@@ -19,7 +19,10 @@ namespace Pharmacy_API.Models.Account
         [StringLength(36)]
         public string PolicyId { get; set; } = string.Empty;
 
+        [ForeignKey("RoleId")]
         public virtual Role Role { get; set; } = null!;
+
+        [ForeignKey("PolicyId")]
         public virtual Policy Policy { get; set; } = null!;
     }
 }

@@ -69,71 +69,175 @@ namespace Pharmacy_API.Services.Account
                 _logger.LogInformation($"📤 Attempting to send OTP email to {email}");
 
                 string emailContent = $@"
-            <!DOCTYPE html>
-            <html lang=""vi"">
-            <head>
-                <meta charset=""UTF-8"">
-                <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-                <title>Xác nhận mã OTP - Divine Shop</title>
-            </head>
-            <body style=""margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;"">
-                <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color: #f9fafb; padding: 40px 20px;"">
+<!DOCTYPE html>
+<html lang=""vi"">
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>Xác nhận mã OTP - Nhà thuốc An Tâm Việt</title>
+    <link href=""https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"" rel=""stylesheet"">
+</head>
+<body style=""margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f0f4f8;"">
+    <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color: #f0f4f8; padding: 30px 15px;"">
+        <tr>
+            <td align=""center"">
+                
+                <!-- Main Container -->
+                <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; max-width: 600px;"">
+                    
+                    <!-- Header -->
                     <tr>
-                        <td align=""center"">
-                            <table width=""1000"" cellpadding=""0"" cellspacing=""0"" style=""background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;"">
+                        <td style=""background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); padding: 35px 40px; text-align: center;"">
+                            <table cellpadding=""0"" cellspacing=""0"" style=""margin: 0 auto;"">
                                 <tr>
-                                    <td align=""center"" style=""background-color: #ffffff; padding: 40px 30px; border-bottom: 1px solid #e5e7eb;"">
+                                    <td style=""text-align: center;"">
+                                        <div style=""width: 56px; height: 56px; background-color: rgba(255,255,255,0.2); border-radius: 14px; display: inline-block; text-align: center; line-height: 56px; margin-bottom: 12px;"">
+                                            <span style=""font-size: 28px;"">💊</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style=""text-align: center;"">
+                                        <h1 style=""margin: 0; font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;"">Nhà thuốc An Tâm Việt</h1>
+                                        <p style=""margin: 6px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 400;"">Chăm sóc sức khỏe của bạn</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style=""padding: 40px 40px 30px 40px;"">
+                            
+                            <!-- Icon -->
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                                <tr>
+                                    <td align=""center"" style=""padding-bottom: 24px;"">
+                                        <div style=""width: 64px; height: 64px; background-color: #f0f9ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px;"">
+                                            <span style=""font-size: 32px;"">🔐</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Title -->
+                            <h2 style=""margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #0f172a; text-align: center;"">
+                                Xác nhận mã OTP
+                            </h2>
+                            
+                            <!-- Subtitle -->
+                            <p style=""margin: 0 0 28px 0; font-size: 14px; color: #64748b; text-align: center; line-height: 1.6;"">
+                                Vui lòng sử dụng mã bên dưới để hoàn tất xác thực
+                            </p>
+
+                            <!-- OTP Code Box -->
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""margin-bottom: 28px;"">
+                                <tr>
+                                    <td align=""center"">
+                                        <div style=""display: inline-block; background-color: #f8fafc; border: 2px dashed #0ea5e9; border-radius: 12px; padding: 20px 40px;"">
+                                            <p style=""margin: 0 0 6px 0; font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;"">Mã xác thực của bạn</p>
+                                            <span style=""font-size: 42px; font-weight: 700; color: #0284c7; letter-spacing: 8px; line-height: 1;"">{code}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Timer Info -->
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""margin-bottom: 24px;"">
+                                <tr>
+                                    <td align=""center"">
+                                        <div style=""display: inline-flex; align-items: center; background-color: #fef3c7; border-radius: 8px; padding: 10px 18px;"">
+                                            <span style=""font-size: 16px; margin-right: 8px;"">⏰</span>
+                                            <span style=""font-size: 13px; color: #92400e; font-weight: 500;"">Mã có hiệu lực trong <strong>5 phút</strong></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Warning -->
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""margin-bottom: 30px;"">
+                                <tr>
+                                    <td style=""background-color: #fef2f2; border-left: 3px solid #ef4444; border-radius: 6px; padding: 14px 18px;"">
                                         <table cellpadding=""0"" cellspacing=""0"">
                                             <tr>
-                                                <td align=""center"">
-                                                    <div style=""width: 48px; height: 48px; background-color: #2563eb; border-radius: 50%; display: inline-block; vertical-align: middle; text-align: center; line-height: 48px;"">
-                                                        <span style=""color: #ffffff; font-size: 24px; font-weight: bold;"">D</span>
-                                                    </div>
+                                                <td style=""vertical-align: top; padding-right: 12px;"">
+                                                    <span style=""font-size: 16px;"">⚠️</span>
                                                 </td>
-                                                <td style=""padding-left: 12px;"">
-                                                    <h1 style=""margin: 0; font-size: 28px; font-weight: bold; color: #2563eb;"">Nhà thuốc An Tâm Việt</h1>
+                                                <td>
+                                                    <p style=""margin: 0; font-size: 13px; color: #991b1b; line-height: 1.5;"">
+                                                        <strong>Quan trọng:</strong> Không chia sẻ mã này với bất kỳ ai. Nhân viên nhà thuốc sẽ không bao giờ yêu cầu bạn cung cấp mã OTP.
+                                                    </p>
                                                 </td>
                                             </tr>
                                         </table>
                                     </td>
                                 </tr>
+                            </table>
+
+                            <!-- Divider -->
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""margin-bottom: 20px;"">
                                 <tr>
-                                    <td style=""padding: 40px 30px;"">
-                                        <h2 style=""margin: 0 0 30px 0; font-size: 24px; font-weight: bold; color: #111827; text-align: center;"">
-                                            Xác nhận mã OTP
-                                        </h2>
-                                        <p style=""margin: 0 0 15px 0; font-size: 16px; color: #374151; line-height: 1.5;"">
-                                            Chào <span style=""text-transform: capitalize;"">{email}</span>,
-                                        </p>
-                                        <p style=""margin: 0 0 30px 0; font-size: 16px; color: #6b7280; line-height: 1.5;"">
-                                            Bạn vừa nhận được mã OTP xác nhận tại Nhà thuốc An Tâm Việt.
-                                        </p>
-                                        <table width=""100%"" cellpadding=""0"" cellspacing=""0"">
-                                            <tr>
-                                                <td align=""center"" style=""padding: 0 0 30px 0;"">
-                                                    <div style=""display: inline-block; border: 2px solid #2563eb; border-radius: 6px; padding: 16px 32px; background-color: #eff6ff;"">
-                                                        <span style=""font-size: 36px; font-weight: bold; color: #2563eb; letter-spacing: 4px;"">
-                                                           {code} 
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        <p style=""margin: 0 0 25px 0; font-size: 14px; color: #6b7280; line-height: 1.6;"">
-                                            Nếu bạn không thực hiện yêu cầu này xin vui lòng bỏ qua nó hoặc nếu cần hỗ trợ hãy liên hệ với chúng tôi ngay.
-                                        </p>
-                                        <p style=""margin: 0; font-size: 16px; color: #374151; line-height: 1.5;"">
-                                            Trân trọng,<br>
-                                            <strong>Divine Corp</strong>
+                                    <td style=""border-top: 1px solid #e2e8f0;""></td>
+                                </tr>
+                            </table>
+
+                            <!-- Help Text -->
+                            <p style=""margin: 0 0 6px 0; font-size: 13px; color: #64748b; line-height: 1.6; text-align: center;"">
+                                Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.
+                            </p>
+                            <p style=""margin: 0; font-size: 13px; color: #64748b; line-height: 1.6; text-align: center;"">
+                                Cần hỗ trợ? Liên hệ: <a href=""mailto:support@antamviet.com"" style=""color: #0284c7; text-decoration: none; font-weight: 500;"">support@antamviet.com</a>
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style=""background-color: #f8fafc; padding: 24px 40px; border-top: 1px solid #e2e8f0; text-align: center;"">
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                                <tr>
+                                    <td align=""center"" style=""padding-bottom: 12px;"">
+                                        <div style=""display: inline-flex; gap: 16px;"">
+                                            <span style=""font-size: 12px; color: #94a3b8;"">📞 1900 1234</span>
+                                            <span style=""font-size: 12px; color: #cbd5e1;"">|</span>
+                                            <span style=""font-size: 12px; color: #94a3b8;"">🌐 antamviet.com</span>
+                                            <span style=""font-size: 12px; color: #cbd5e1;"">|</span>
+                                            <span style=""font-size: 12px; color: #94a3b8;"">📍 123 Nguyễn Huệ, Q.1, TP.HCM</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align=""center"">
+                                        <p style=""margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;"">
+                                            © 2024 Nhà thuốc An Tâm Việt. Tất cả quyền được bảo lưu.<br>
+                                            Email này được gửi tự động, vui lòng không trả lời.
                                         </p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+
                 </table>
-            </body>
-            </html>";
+
+                <!-- Trust Badge -->
+                <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""margin-top: 20px;"">
+                    <tr>
+                        <td align=""center"">
+                            <p style=""margin: 0; font-size: 11px; color: #94a3b8;"">
+                                🔒 Email được bảo mật bởi Nhà thuốc An Tâm Việt
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
 
                 var sendResult = await _emailSender.SendEmailAsync(email, "OTP Verification", emailContent);
 

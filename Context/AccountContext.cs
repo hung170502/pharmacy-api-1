@@ -13,12 +13,13 @@ namespace Pharmacy_API.Context
     public class AccountContext(DbContextOptions<AccountContext> options) : IdentityDbContext<ApplicationUser, Role, string, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options), IUnitOfWork
     {
         public AccountContext() : this(new DbContextOptions<AccountContext>()) { }
+
         public virtual DbSet<Permission> Permissions { get; set; }
         public virtual DbSet<PolicyPermission> PolicyPermissions { get; set; }
         public virtual DbSet<Policy> Policies { get; set; }
         public virtual DbSet<RolePolicy> RolePolicies { get; set; }
         public virtual DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
-        public virtual DbSet<UserOtp> UserOtps { get; set; } // ✅ thêm dòng này
+        public virtual DbSet<UserOtp> UserOtps { get; set; }
 
         public virtual DbSet<Product> Products { get; set; }
         public virtual DbSet<Category> Categories { get; set; }
@@ -30,20 +31,80 @@ namespace Pharmacy_API.Context
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<RolePolicy>(entity =>
+            // ===== RBAC Configurations =====
+
+            // Permission
+            modelBuilder.Entity<Permission>(entity =>
             {
-                entity.HasKey(m => new { m.RoleId, m.PolicyId });
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.Property(e => e.Id).HasMaxLength(36);
             });
 
+            // Policy
+            modelBuilder.Entity<Policy>(entity =>
+            {
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.Property(e => e.Id).HasMaxLength(36);
+            });
+
+            // PolicyPermission (Many-to-Many: Policy <-> Permission)
             modelBuilder.Entity<PolicyPermission>(entity =>
             {
                 entity.HasKey(m => new { m.PolicyId, m.PermissionId });
+
+                entity.HasOne(pp => pp.Policy)
+                      .WithMany(p => p.PolicyPermissions)
+                      .HasForeignKey(pp => pp.PolicyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(pp => pp.Permission)
+                      .WithMany(p => p.PolicyPermissions)
+                      .HasForeignKey(pp => pp.PermissionId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
-            //modelBuilder.Entity<UserRole>(entity =>
-            //{
-            //    entity.HasKey(m => new { m.UserId, m.RoleId });
-            //});
+            // RolePolicy (Many-to-Many: Role <-> Policy)
+            modelBuilder.Entity<RolePolicy>(entity =>
+            {
+                entity.HasKey(m => new { m.RoleId, m.PolicyId });
+
+                entity.HasOne(rp => rp.Role)
+                      .WithMany(r => r.RolePolicies)
+                      .HasForeignKey(rp => rp.RoleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(rp => rp.Policy)
+                      .WithMany(p => p.RolePolicies)
+                      .HasForeignKey(rp => rp.PolicyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserRole (Many-to-Many: User <-> Role)
+            modelBuilder.Entity<UserRole>(entity =>
+            {
+                entity.HasKey(m => new { m.UserId, m.RoleId });
+
+                entity.HasOne(ur => ur.User)
+                      .WithMany(u => u.UserRoles)
+                      .HasForeignKey(ur => ur.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ur => ur.Role)
+                      .WithMany(r => r.UserRoles)
+                      .HasForeignKey(ur => ur.RoleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserRefreshToken
+            modelBuilder.Entity<UserRefreshToken>(entity =>
+            {
+                entity.HasOne(rt => rt.User)
+                      .WithMany()
+                      .HasForeignKey(rt => rt.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ===== Product Configurations =====
 
             modelBuilder.Entity<Product>(entity =>
             {
@@ -66,25 +127,18 @@ namespace Pharmacy_API.Context
                       .WithMany()
                       .HasForeignKey(p => p.BrandOriginId)
                       .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(p => p.Manufacturer)
                       .WithMany()
                       .HasForeignKey(p => p.ManufacturerId)
                       .OnDelete(DeleteBehavior.Restrict);
-
             });
 
-            // Configure Category
-            //modelBuilder.Entity<Category>(entity =>
-            //{
-            //    entity.HasOne(c => c.Parent)
-            //          .WithMany(p => p.Children)
-            //          .HasForeignKey(c => c.ParentId)
-            //          .OnDelete(DeleteBehavior.Restrict);
-            //});
+            // Category
             modelBuilder.Entity<Category>(entity =>
             {
                 entity.HasMany(c => c.Children)
-                      .WithOne() 
+                      .WithOne()
                       .HasForeignKey(c => c.ParentId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
