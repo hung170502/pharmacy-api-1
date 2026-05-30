@@ -250,6 +250,13 @@ builder.Services.AddHttpClient<IEmailSenderService, EmailSenderService>();
 #endregion
 
 
+#region Seed Data Service
+
+// ✅ Thêm SeedDataService
+builder.Services.AddScoped<SeedDataService>();
+
+#endregion
+
 #region Compression
 
 builder.Services.Configure<GzipCompressionProviderOptions>(options =>
@@ -358,6 +365,14 @@ app.UseMiddleware<JwtMiddleware>();
 app.MapControllers();
 
 #endregion
+
+// ✅ Chạy Seed Data sau khi app khởi động
+using (var seedScope = app.Services.CreateScope())
+{
+    var seedService = seedScope.ServiceProvider.GetRequiredService<SeedDataService>();
+    await seedService.SeedAsync();
+}
+
 
 app.Run();
 
