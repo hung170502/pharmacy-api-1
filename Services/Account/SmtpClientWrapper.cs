@@ -35,6 +35,12 @@ namespace Pharmacy_API.Services.Account
     {
         private readonly AppSettings _appSettings;
         private readonly ILogger<SmtpClientWrapper> _logger;
+        private SmtpClient smtpClient;
+
+        public SmtpClientWrapper(SmtpClient smtpClient)
+        {
+            this.smtpClient = smtpClient;
+        }
 
         public SmtpClientWrapper(
             IOptions<AppSettings> appSettings,

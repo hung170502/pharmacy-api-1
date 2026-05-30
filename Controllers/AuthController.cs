@@ -103,7 +103,7 @@ namespace Pharmacy_API.Controllers
             var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
-            user.LastLogin = vietnamTime;
+            user.LastLogin = DateTime.UtcNow;
             user.IsOnline = true;
 
             await _userManager.UpdateAsync(user);
@@ -124,7 +124,7 @@ namespace Pharmacy_API.Controllers
                 jwtResult.AccessToken,
                 new DistributedCacheEntryOptions
                 {
-                    AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(
+                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(
                         _appSettings.Jwt.AccessTokenExpiryInMinutes
                     )
                 });
