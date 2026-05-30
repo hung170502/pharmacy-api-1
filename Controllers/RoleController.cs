@@ -129,6 +129,44 @@ namespace Pharmacy_API.Controllers
             return Ok(await _roleService.GetListRolesAsync(filterDto));
         }
         #endregion
+        #region Assign Policies to Role
+        [HttpPost("{roleId}/policies")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> AssignPolicies(string roleId, [FromBody] List<string> policyIds)
+        {
+            var result = await _roleService.AssignPoliciesToRoleAsync(roleId, policyIds);
+            if (result)
+            {
+                _logger.LogInformation($"Policies assigned to role {roleId}");
+                return Ok(new { Message = "Policies assigned successfully" });
+            }
 
+            return BadRequest(new ErrorResponseDto { Code = "AssignFailed", Description = "Failed to assign policies" });
+        }
+        #endregion
+
+        #region Get Policies of Role
+        [HttpGet("{roleId}/policies")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetRolePolicies(string roleId)
+        {
+            var policies = await _roleService.GetPoliciesByRoleIdAsync(roleId);
+            return Ok(policies);
+        }
+        #endregion
+
+        #region Get Permissions of Role
+        [HttpGet("{roleId}/permissions")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetRolePermissions(string roleId)
+        {
+            var permissions = await _roleService.GetPermissionsByRoleIdAsync(roleId);
+            return Ok(permissions);
+        }
+        #endregion
     }
 }
