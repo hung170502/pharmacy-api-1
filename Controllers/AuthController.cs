@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Distributed;
@@ -33,6 +34,7 @@ namespace Pharmacy_API.Controllers
         private readonly AppSettings _appSettings;
         private readonly IAuthManagerService _authManagerService;
         private readonly IDistributedCache _distributedCache;
+        private readonly IEmailSenderService _emailSender;
         #endregion
 
         #region Constructors
@@ -197,6 +199,97 @@ namespace Pharmacy_API.Controllers
                 result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description })
                 .First());
         }
+
+
+        #region Test & Debug
+
+        [HttpGet("TestEmailConfig")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestEmailConfig([FromQuery] string testEmail)
+        {
+            if (string.IsNullOrEmpty(testEmail))
+            {
+                return BadRequest(new { Error = "Please provide testEmail parameter" });
+            }
+
+            try
+            {
+                _logger.LogInformation($"🧪 Starting email configuration test to {testEmail}");
+                _logger.LogInformation($"📋 SMTP Settings - Host: {_appSettings.MailSettings.Host}, Port: {_appSettings.MailSettings.Port}");
+                _logger.LogInformation($"📋 From: {_appSettings.MailSettings.Mail}, Display Name: {_appSettings.MailSettings.DisplayName}");
+
+                var result = await _emailSender.SendEmailAsync(
+                    testEmail,
+                    "Test Email - Pharmacy API Configuration",
+                    $@"
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset=""UTF-8""></head>
+            <body style=""font-family: Arial, sans-serif; padding: 20px;"">
+                <h1 style=""color: #2563eb;"">✅ Email Configuration Test</h1>
+                <p>If you receive this email, your SMTP configuration is working correctly!</p>
+                <hr>
+                <h3>Configuration Details:</h3>
+                <ul>
+                    <li><strong>SMTP Host:</strong> {_appSettings.MailSettings.Host}</li>
+                    <li><strong>SMTP Port:</strong> {_appSettings.MailSettings.Port}</li>
+                    <li><strong>From Email:</strong> {_appSettings.MailSettings.Mail}</li>
+                    <li><strong>Time:</strong> {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</li>
+                </ul>
+            </body>
+            </html>"
+                );
+
+                return Ok(new
+                {
+                    Success = result,
+                    TestEmail = testEmail,
+                    SmtpHost = _appSettings.MailSettings.Host,
+                    SmtpPort = _appSettings.MailSettings.Port,
+                    FromEmail = _appSettings.MailSettings.Mail,
+                    Message = result ? "Email sent successfully!" : "Failed to send email. Check logs for details."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"❌ Test email failed: {ex.Message}");
+                return BadRequest(new
+                {
+                    Error = ex.Message,
+                    InnerError = ex.InnerException?.Message,
+                    StackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        [HttpGet("TestOtpGeneration")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestOtpGeneration([FromQuery] string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest(new { Error = "Please provide email parameter" });
+            }
+
+            try
+            {
+                var result = await _authManagerService.SendOtpAsync(email);
+
+                return Ok(new
+                {
+                    Success = result,
+                    Email = email,
+                    Message = result ? "OTP generated and sent successfully" : "Failed to send OTP"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        #endregion
+
 
         [HttpPost]
         [AllowAnonymous]

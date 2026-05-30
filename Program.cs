@@ -150,7 +150,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = true;
+    options.SignIn.RequireConfirmedAccount = false;
 })
 .AddRoles<Role>()
 .AddEntityFrameworkStores<AccountContext>()
@@ -205,41 +205,54 @@ builder.Services.AddSwaggerGen(options =>
 
 #endregion
 
+//#region Email Config
+
+//void AddEmailConfig(IServiceCollection services, IConfiguration configuration)
+//{
+//    services.AddScoped<ISmtpClient>(provider =>
+//    {
+//        var port =
+//            configuration.GetValue<int>("MailSettings:Port", 587);
+
+//        var smtpClient = new SmtpClient(
+//            configuration["MailSettings:Host"],
+//            port
+//        )
+//        {
+//            UseDefaultCredentials = false,
+
+//            Credentials = new NetworkCredential(
+//                configuration["MailSettings:Mail"],
+//                configuration["MailSettings:Password"]
+//            ),
+
+//            EnableSsl =
+//                configuration.GetValue<bool>(
+//                    "MailSettings:EnableSsl",
+//                    true
+//                )
+//        };
+
+//        return new SmtpClientWrapper(smtpClient);
+//    });
+//}
+
+//AddEmailConfig(builder.Services, builder.Configuration);
+
+//#endregion
+
 #region Email Config
 
 void AddEmailConfig(IServiceCollection services, IConfiguration configuration)
 {
-    services.AddScoped<ISmtpClient>(provider =>
-    {
-        var port =
-            configuration.GetValue<int>("MailSettings:Port", 587);
-
-        var smtpClient = new SmtpClient(
-            configuration["MailSettings:Host"],
-            port
-        )
-        {
-            UseDefaultCredentials = false,
-
-            Credentials = new NetworkCredential(
-                configuration["MailSettings:Mail"],
-                configuration["MailSettings:Password"]
-            ),
-
-            EnableSsl =
-                configuration.GetValue<bool>(
-                    "MailSettings:EnableSsl",
-                    true
-                )
-        };
-
-        return new SmtpClientWrapper(smtpClient);
-    });
+    // Đăng ký SmtpClientWrapper trực tiếp - nó sẽ tự tạo SmtpClient khi cần
+    services.AddScoped<ISmtpClient, SmtpClientWrapper>();
 }
 
 AddEmailConfig(builder.Services, builder.Configuration);
 
 #endregion
+
 
 #region Compression
 
