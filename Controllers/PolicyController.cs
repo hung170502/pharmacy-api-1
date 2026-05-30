@@ -130,6 +130,37 @@ namespace Pharmacy_API.Controllers
 			return Ok(await _policyService.GetListPoliciesAsync(filterDto));
         }
         #endregion
+        // =========================================
+        // POLICY - PERMISSIONS
+        // =========================================
 
+        #region Assign Permissions to Policy
+        [HttpPost("{policyId}/permissions")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> AssignPermissions(string policyId, [FromBody] List<string> permissionIds)
+        {
+            var result = await _policyService.AssignPermissionsToPolicyAsync(policyId, permissionIds);
+            if (result)
+            {
+                _logger.LogInformation("Permissions assigned to policy successfully");
+                return Ok(new { Message = "Permissions assigned successfully" });
+            }
+
+            return BadRequest(new ErrorResponseDto { Code = "AssignFailed", Description = "Failed to assign permissions" });
+        }
+        #endregion
+
+        #region Get Permissions of Policy
+        [HttpGet("{policyId}/permissions")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetPolicyPermissions(string policyId)
+        {
+            var permissions = await _policyService.GetPermissionsByPolicyIdAsync(policyId);
+            return Ok(permissions);
+        }
+        #endregion
     }
 }

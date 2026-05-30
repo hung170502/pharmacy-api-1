@@ -164,5 +164,56 @@ namespace Pharmacy_API.Services.Account
             return new PagedDto<RoleDto>(dt.TotalRecords, dtos);
         }
         #endregion
+        // Thêm vào class
+        public async Task<bool> AssignPoliciesToRoleAsync(string roleId, List<string> policyIds)
+        {
+            try
+            {
+                await _rolePolicyRepository.DeleteByRoleIdAsync(roleId);
+
+                foreach (var policyId in policyIds)
+                {
+                    await _rolePolicyRepository.InsertAsync(new RolePolicy
+                    {
+                        RoleId = roleId,
+                        PolicyId = policyId
+                    });
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<List<PolicyDto>> GetPoliciesByRoleIdAsync(string roleId)
+        {
+            var role = await _roleRepository.GetByIdAsync(roleId, isDeep: true);
+            return role?.RolePolicies?.Select(rp => new PolicyDto
+            {
+                Id = rp.Policy.Id,
+                Name = rp.Policy.Name,
+                DisplayName = rp.Policy.DisplayName,
+                Sort = rp.Policy.Sort
+            }).ToList() ?? new List<PolicyDto>();
+        }
+
+        public async Task<List<PermissionDto>> GetPermissionsByRoleIdAsync(string roleId)
+        {
+            var role = await _roleRepository.GetByIdAsync(roleId, isDeep: true);
+            return role?.RolePolicies?.SelectMany(rp => rp.Policy.PolicyPermissions)
+                .Select(pp => new PermissionDto
+                {
+                    Id = pp.Permission.Id,
+                    Name = pp.Permission.Name,
+                    DisplayName = pp.Permission.DisplayName,
+                    Group = pp.Permission.Group,
+                    Sort = pp.Permission.Sort
+                })
+                .Distinct()
+                .ToList() ?? new List<PermissionDto>();
+        }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace Pharmacy_API.Dtos.Account
 {
@@ -6,6 +6,8 @@ namespace Pharmacy_API.Dtos.Account
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;  // ✅ Thêm dòng này
+
         public string? Description { get; set; }
         public int Sort { get; set; }
         public ICollection<PermissionDto> Permissions { get; set; } = new HashSet<PermissionDto>();
@@ -13,6 +15,8 @@ namespace Pharmacy_API.Dtos.Account
         {
             Id = string.Empty;
             Name = string.Empty;
+            DisplayName = string.Empty;  // ✅ Thêm dòng này
+
             Description = string.Empty;
             Sort = 0;
             Permissions = new HashSet<PermissionDto>();

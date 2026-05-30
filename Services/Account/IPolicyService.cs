@@ -10,5 +10,7 @@ namespace Pharmacy_API.Services.Account
         Task<int> DeletePolicyAsync(string id);
         Task<PolicyDto?> GetPolicyAsync(string id, bool isDeep = false);
         Task<PagedDto<PolicyDto>> GetListPoliciesAsync(PolicyFilterDto filterDto);
+        Task<bool> AssignPermissionsToPolicyAsync(string policyId, List<string> permissionIds);
+        Task<List<PermissionDto>> GetPermissionsByPolicyIdAsync(string policyId);
     }
 }

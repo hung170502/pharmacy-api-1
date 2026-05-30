@@ -10,5 +10,8 @@ namespace Pharmacy_API.Services.Account
         Task<int> DeleteRoleAsync(string id);
         Task<RoleDto?> GetRoleAsync(string id, bool isDeep = false);
         Task<PagedDto<RoleDto>> GetListRolesAsync(RoleFilterDto filterDto);
+        Task<bool> AssignPoliciesToRoleAsync(string roleId, List<string> policyIds);
+        Task<List<PolicyDto>> GetPoliciesByRoleIdAsync(string roleId);
+        Task<List<PermissionDto>> GetPermissionsByRoleIdAsync(string roleId);
     }
 }

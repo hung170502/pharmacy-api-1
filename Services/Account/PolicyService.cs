@@ -168,5 +168,61 @@ namespace Pharmacy_API.Services.Account
             return new PagedDto<PolicyDto>(dt.TotalRecords, dtos);
         }
         #endregion
+
+        #region Assign Permissions to Policy
+        public async Task<bool> AssignPermissionsToPolicyAsync(string policyId, List<string> permissionIds)
+        {
+            try
+            {
+                _logger.LogInformation($"Assigning {permissionIds.Count} permissions to policy {policyId}");
+
+                // Xóa tất cả permissions cũ
+                await _policyPermissionRepository.DeleteByPolicyIdAsync(policyId);
+
+                // Thêm permissions mới
+                foreach (var permissionId in permissionIds)
+                {
+                    var policyPermission = new PolicyPermission
+                    {
+                        PolicyId = policyId,
+                        PermissionId = permissionId
+                    };
+                    await _policyPermissionRepository.InsertAsync(policyPermission);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error assigning permissions to policy: {ex.Message}");
+                return false;
+            }
+        }
+        #endregion
+
+        #region Get Permissions of Policy
+        public async Task<List<PermissionDto>> GetPermissionsByPolicyIdAsync(string policyId)
+        {
+            _logger.LogInformation($"Getting permissions for policy {policyId}");
+
+            var policy = await _policyRepository.GetByIdAsync(policyId, isDeep: true);
+
+            if (policy?.PolicyPermissions == null)
+                return new List<PermissionDto>();
+
+            var permissions = policy.PolicyPermissions
+                .Select(pp => new PermissionDto
+                {
+                    Id = pp.Permission.Id,
+                    Name = pp.Permission.Name,
+                    DisplayName = pp.Permission.DisplayName,
+                    Group = pp.Permission.Group,
+                    Sort = pp.Permission.Sort
+                })
+                .ToList();
+
+            return permissions;
+        }
+        #endregion
     }
 }

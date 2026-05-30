@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +22,8 @@ namespace Pharmacy_API.Controllers
         private readonly IUserService _userService;
         private readonly IUpdateUserService _updateUserService;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<Role> _roleManager;  // ✅ Thêm dòng này
+
         #endregion
 
         #region Constructors
@@ -29,12 +31,15 @@ namespace Pharmacy_API.Controllers
             ILogger<UsersController> logger,
             IUserService userService,
             IUpdateUserService updateUserService,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            RoleManager<Role> roleManager)
         {
             _logger = logger;
             _userService = userService;
             _updateUserService = updateUserService;
             _userManager = userManager;
+                _roleManager = roleManager;  // ✅ Thêm dòng này
+
         }
         #endregion
 
@@ -409,7 +414,81 @@ namespace Pharmacy_API.Controllers
             }
         }
         #endregion
+        // =========================================
+        // RBAC - ASSIGN ROLE
+        // =========================================
 
+        #region Assign Role
+        [HttpPost("assign-role")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return NotFound(new ErrorResponseDto { Code = "UserNotFound", Description = "User not found" });
+
+            var roleExists = await _roleManager.RoleExistsAsync(request.RoleName);
+            if (!roleExists)
+                return NotFound(new ErrorResponseDto { Code = "RoleNotFound", Description = $"Role {request.RoleName} not found" });
+
+            var alreadyInRole = await _userManager.IsInRoleAsync(user, request.RoleName);
+            if (alreadyInRole)
+                return BadRequest(new ErrorResponseDto { Code = "AlreadyInRole", Description = $"User already in role {request.RoleName}" });
+
+            var result = await _userManager.AddToRoleAsync(user, request.RoleName);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"Role {request.RoleName} assigned to {request.Email}");
+                return Ok(new { Message = $"Role {request.RoleName} assigned to {request.Email}" });
+            }
+
+            return BadRequest(result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
+        }
+        #endregion
+
+        #region Remove Role
+        [HttpPost("remove-role")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveRole([FromBody] AssignRoleRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return NotFound(new ErrorResponseDto { Code = "UserNotFound", Description = "User not found" });
+
+            var result = await _userManager.RemoveFromRoleAsync(user, request.RoleName);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"Role {request.RoleName} removed from {request.Email}");
+                return Ok(new { Message = $"Role {request.RoleName} removed from {request.Email}" });
+            }
+
+            return BadRequest(result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
+        }
+        #endregion
+
+        #region Get User Roles
+        [HttpGet("{userId}/roles")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetUserRoles(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new ErrorResponseDto { Code = "UserNotFound", Description = "User not found" });
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(roles);
+        }
+        #endregion
 
     }
 }
