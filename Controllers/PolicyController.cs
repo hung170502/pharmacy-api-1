@@ -1,133 +1,131 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using Pharmacy_API.Supports;
 using Microsoft.AspNetCore.Authorization;
-using Pharmacy_API.Services.Account;
+using Microsoft.AspNetCore.Mvc;
 using Pharmacy_API.Dtos.Account;
+using Pharmacy_API.Services.Account;
+using Pharmacy_API.Supports;
 
 namespace Pharmacy_API.Controllers
 {
     [Route("api/Account/[controller]")]
-	[ApiController]
+    [ApiController]
     public class PoliciesController : ApiControllerBase
     {
-		#region Fields
-		private readonly ILogger _logger;
-		private readonly IPolicyService _policyService;
-		#endregion
+        #region Fields
+        private readonly ILogger _logger;
+        private readonly IPolicyService _policyService;
+        #endregion
 
-		#region Constructors
-		public PoliciesController(
-			ILogger<PoliciesController> logger,
-			IPolicyService policyService)
+        #region Constructors
+        public PoliciesController(
+            ILogger<PoliciesController> logger,
+            IPolicyService policyService)
         {
-			_logger = logger;
-			_policyService = policyService;
+            _logger = logger;
+            _policyService = policyService;
         }
-		#endregion
+        #endregion
 
-		#region Insert Policy
-		[HttpPost]
+        #region Insert Policy
+        [HttpPost]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
-		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<PolicyDto?>> Insert([FromBody]PolicyRequestDto policyRequestDto)
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<PolicyDto?>> Insert([FromBody] PolicyRequestDto policyRequestDto)
         {
-			PolicyDto? policyDto = await _policyService.InsertPolicyAsync(policyRequestDto);
-			policyRequestDto.SetUserID(await GetUserID());
+            PolicyDto? policyDto = await _policyService.InsertPolicyAsync(policyRequestDto);
+            policyRequestDto.SetUserID(await GetUserID());
 
-			if(policyDto != null)
-			{
-				_logger.LogInformation("Insert Success");
+            if (policyDto != null)
+            {
+                _logger.LogInformation("Insert Success");
 
-				return StatusCode(201, policyDto);
-			}
+                return StatusCode(201, policyDto);
+            }
 
-			return StatusCode(500);
+            return StatusCode(500);
         }
-		#endregion
+        #endregion
 
-		#region Update Policy
+        #region Update Policy
         [HttpPut("{id}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<int>> Update([FromBody]PolicyRequestDto policyRequestDto, string id)
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<int>> Update([FromBody] PolicyRequestDto policyRequestDto, string id)
         {
-			policyRequestDto.SetUserID(await GetUserID());
+            policyRequestDto.SetUserID(await GetUserID());
 
-			int total = await _policyService.UpdatePolicyAsync(policyRequestDto, id);
-			if (total > 0)
-			{
-				_logger.LogInformation("Update Success");
+            int total = await _policyService.UpdatePolicyAsync(policyRequestDto, id);
+            if (total > 0)
+            {
+                _logger.LogInformation("Update Success");
 
-				return Ok(total);
-			}
+                return Ok(total);
+            }
 
-			return StatusCode(500);
+            return StatusCode(500);
         }
         #endregion
 
-		#region Delete Policy
+        #region Delete Policy
         [HttpDelete("{id}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<int>> Delete(string id)
         {
-			PolicyDto? policyDto = await _policyService.GetPolicyAsync(id, false);
-			if(policyDto == null)
-			{
-				return NotFound(new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "User not found" });
-			}
+            PolicyDto? policyDto = await _policyService.GetPolicyAsync(id, false);
+            if (policyDto == null)
+            {
+                return NotFound(new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "User not found" });
+            }
 
-			int total = await _policyService.DeletePolicyAsync(id);
-			if (total > 0)
-			{
-				_logger.LogInformation("Delete Success");
+            int total = await _policyService.DeletePolicyAsync(id);
+            if (total > 0)
+            {
+                _logger.LogInformation("Delete Success");
 
-				return Ok(total);
-			}
+                return Ok(total);
+            }
 
-			return StatusCode(500);
+            return StatusCode(500);
         }
         #endregion
 
-		#region Get Policy
+        #region Get Policy
         [HttpGet("{id}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<PolicyDto?>> Get(string id, bool? isDeep)
         {
-			PolicyDto? policyDto = await _policyService.GetPolicyAsync(id, isDeep ?? false);
-			if(policyDto == null)
-			{
-				return NotFound(new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "User not found"});
-			}
+            PolicyDto? policyDto = await _policyService.GetPolicyAsync(id, isDeep ?? false);
+            if (policyDto == null)
+            {
+                return NotFound(new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "User not found" });
+            }
 
-			return Ok(policyDto);
+            return Ok(policyDto);
         }
         #endregion
 
-		#region Get List Policies
+        #region Get List Policies
         [HttpGet]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<PagedDto<PolicyDto>>> GetList([FromQuery]PolicyFilterDto filterDto)
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<PagedDto<PolicyDto>>> GetList([FromQuery] PolicyFilterDto filterDto)
         {
-			return Ok(await _policyService.GetListPoliciesAsync(filterDto));
+            return Ok(await _policyService.GetListPoliciesAsync(filterDto));
         }
         #endregion
         // =========================================

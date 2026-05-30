@@ -42,8 +42,7 @@ namespace Pharmacy_API.Services.Account
             IRolePolicyRepository rolePolicyRepository,
             IPolicyPermissionRepository policyPermissionRepository,
             IPermissionRepository permissionRepository,
-            IOptions<AppSettings> appSettings
-           )
+            IOptions<AppSettings> appSettings)
         {
             _logger = logger;
             _mapper = mapper;
@@ -83,11 +82,8 @@ namespace Pharmacy_API.Services.Account
 
             if (requestDto.RoleIds.Count > 0)
             {
-                //var roles = await _roleRepository.GetByIdsAsync(requestDto.RoleIds);
-
                 var query = _roleManager.Roles.Where(role => requestDto.RoleIds.Contains(role.Id));
                 var roles = query.ToList();
-
 
                 if (roles.Count != requestDto.RoleIds.Count)
                 {
@@ -130,7 +126,6 @@ namespace Pharmacy_API.Services.Account
         {
             _logger.LogInformation("Updating User with ID: {UserId}", id);
 
-
             ApplicationUser? user = await _userManager.FindByIdAsync(id);
 
             if (user == null)
@@ -151,23 +146,13 @@ namespace Pharmacy_API.Services.Account
                 return 0;
             }
 
-            // Get names of current roles 
             var currentRoleNames = await _userManager.GetRolesAsync(user);
-            var currentRoles = _roleManager.Roles.Where(r => currentRoleNames.Contains(r.Name))
-                                                 .ToList();
-
-            var newRoles = _roleManager.Roles.Where(r => requestDto.RoleIds.Contains(r.Id))
-                                 .ToList();
-
+            var currentRoles = _roleManager.Roles.Where(r => currentRoleNames.Contains(r.Name)).ToList();
+            var newRoles = _roleManager.Roles.Where(r => requestDto.RoleIds.Contains(r.Id)).ToList();
             var newRoleNames = newRoles.Select(r => r.Name).ToList();
-
-            // define names of roles to remove
             var rolesToRemove = currentRoles.Select(r => r.Name).Except(newRoleNames).ToList();
-
-            // define names of roles to add
             var rolesToAdd = newRoleNames.Except(currentRoles.Select(r => r.Name)).ToList();
 
-            // remove
             if (rolesToRemove.Any())
             {
                 var removeRolesResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
@@ -177,7 +162,6 @@ namespace Pharmacy_API.Services.Account
                 }
             }
 
-            // add
             if (rolesToAdd.Any())
             {
                 var addRolesResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
@@ -189,7 +173,6 @@ namespace Pharmacy_API.Services.Account
 
             _logger.LogInformation("User with ID: {UserId} updated successfully", id);
             return 1;
-
         }
         #endregion
 
@@ -219,7 +202,6 @@ namespace Pharmacy_API.Services.Account
         {
             _logger.LogInformation("Get User");
 
-            //ApplicationUser? user = await _userRepository.GetByIdAsync(id, isDeep);
             var user = await _userManager.FindByIdAsync(id);
             string storagePath = _appSettings.ImageStoragePath;
             string avatarUrl;
@@ -237,18 +219,23 @@ namespace Pharmacy_API.Services.Account
 
             var result = _mapper.Map<ApplicationUser, UserDto>(user);
 
-            if (isDeep)
+            if (user != null)
             {
+                // ✅ Luôn load roleNames
                 var roleNames = await _userManager.GetRolesAsync(user);
+                result.RoleNames = roleNames.ToList();
 
-                var roles = await _roleManager.Roles
-                                               .Where(role => roleNames.Contains(role.Name))
-                                               .Select(role => new RoleDto
-                                               {
-                                                   Id = role.Id,
-                                                   Name = role.Name
-                                               }).ToListAsync();
-                result.Roles = roles;
+                if (isDeep)
+                {
+                    var roles = await _roleManager.Roles
+                        .Where(role => roleNames.Contains(role.Name))
+                        .Select(role => new RoleDto
+                        {
+                            Id = role.Id,
+                            Name = role.Name
+                        }).ToListAsync();
+                    result.Roles = roles;
+                }
             }
 
             return result;
@@ -260,35 +247,46 @@ namespace Pharmacy_API.Services.Account
         {
             _logger.LogInformation("GetList Users");
 
-            PagedDto<ApplicationUser> applicationUsers = await _userRepository.GetListAsync(_mapper.Map<UserFilterDto, UserFilter>(filterDto));
+            PagedDto<ApplicationUser> applicationUsers = await _userRepository.GetListAsync(
+                _mapper.Map<UserFilterDto, UserFilter>(filterDto));
 
-            List<UserDto> userDtos = applicationUsers.Data.Select(user => _mapper.Map<ApplicationUser, UserDto>(user)).ToList();
+            List<UserDto> userDtos = applicationUsers.Data
+                .Select(user => _mapper.Map<ApplicationUser, UserDto>(user))
+                .ToList();
 
-            if (filterDto.IsDeep)
+            // ✅ LUÔN load roles cho tất cả users
+            foreach (var userDto in userDtos)
             {
-                foreach (var userDto in userDtos)
+                var user = await _userManager.FindByIdAsync(userDto.Id);
+                if (user != null)
+                {
+                    var roleNames = await _userManager.GetRolesAsync(user);
+                    userDto.RoleNames = roleNames.ToList();
+                }
+
+                // Nếu isDeep, load cả Role objects
+                if (filterDto.IsDeep)
                 {
                     var roleIds = await _userRoleRepository.GetRolesByUserIdAsync(userDto.Id);
-
                     List<RoleDto> roles = new List<RoleDto>();
                     foreach (var roleId in roleIds)
                     {
-                        var role = _roleManager.Roles.Where(r => r.Id == roleId)
-                                                          .Select(role => new RoleDto
-                                                          {
-                                                              Id = role.Id,
-                                                              Name = role.Name
-                                                          }).FirstOrDefault();
+                        var role = _roleManager.Roles
+                            .Where(r => r.Id == roleId)
+                            .Select(r => new RoleDto
+                            {
+                                Id = r.Id,
+                                Name = r.Name
+                            }).FirstOrDefault();
                         if (role != null)
                         {
                             roles.Add(role);
                         }
                     }
-
                     userDto.Roles = roles;
-
                 }
             }
+
             return new PagedDto<UserDto>(applicationUsers.TotalRecords, userDtos);
         }
         #endregion
@@ -298,7 +296,9 @@ namespace Pharmacy_API.Services.Account
         {
             _logger.LogInformation("Delete Many Users");
 
-            var usersToDelete = await _userManager.Users.Where(user => ids.Contains(user.Id)).ToListAsync();
+            var usersToDelete = await _userManager.Users
+                .Where(user => ids.Contains(user.Id))
+                .ToListAsync();
 
             int deleteCount = 0;
 
@@ -323,7 +323,6 @@ namespace Pharmacy_API.Services.Account
         public async Task<HashSet<string>> GetPermissionsByUserIdAsync(string userId)
         {
             var roleIds = await _userRoleRepository.GetRolesByUserIdAsync(userId);
-
             HashSet<string>? permissions = new HashSet<string>();
 
             if (roleIds.Any())
