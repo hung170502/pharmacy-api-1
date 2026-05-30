@@ -39,12 +39,13 @@ namespace Pharmacy_API.Controllers
 
         #region Constructors
         public AuthController(IOptions<AppSettings> appSettings,
-             ILogger<AuthController> logger,
-             SignInManager<ApplicationUser> signInManager,
-             UserManager<ApplicationUser> userManager,
-             IJwtAuthManagerService jwtAuthManager,
-             IDistributedCache distributedCache,
-             IAuthManagerService authManagerService)
+              ILogger<AuthController> logger,
+              SignInManager<ApplicationUser> signInManager,
+              UserManager<ApplicationUser> userManager,
+              IJwtAuthManagerService jwtAuthManager,
+              IDistributedCache distributedCache,
+              IAuthManagerService authManagerService,
+              IEmailSenderService emailSender) // 👈 Thêm
         {
             _logger = logger;
             _appSettings = appSettings.Value;
@@ -53,6 +54,7 @@ namespace Pharmacy_API.Controllers
             _jwtAuthManager = jwtAuthManager;
             _authManagerService = authManagerService;
             _distributedCache = distributedCache;
+            _emailSender = emailSender; // 👈 Thêm
         }
         #endregion
 
