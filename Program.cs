@@ -328,13 +328,24 @@ var app = builder.Build();
 
 #region Middleware
 
+//app.UseCors("AllowAll");
+
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+
 app.UseCors("AllowAll");
 
-if (app.Environment.IsDevelopment())
+// Luôn bật Swagger cho cả Development và Production
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Pharmacy API V1");
+    c.RoutePrefix = "swagger";
+});
+
 
 app.UseStaticFiles();
 
