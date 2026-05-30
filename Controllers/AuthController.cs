@@ -390,24 +390,45 @@ namespace Pharmacy_API.Controllers
 
         #region Login google
         [HttpGet("Login-google")]
-        public IActionResult GetGoogleLoginUrl()
+        [AllowAnonymous]
+        public IActionResult GetGoogleLoginUrl([FromQuery] string? platform = "web", [FromQuery] string? redirectUrl = null)
         {
             string clientId = _appSettings.Google.ClientId;
             string redirectUri = _appSettings.Google.RedirectUrl;
             string scope = "openid email profile";
 
-            string googleUrl = $"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={clientId}&redirect_uri={redirectUri}&scope={scope}";
-            return Ok(googleUrl);
+            // ✅ Tự động chọn state dựa vào platform
+            string state;
+            if (!string.IsNullOrEmpty(redirectUrl))
+            {
+                state = Uri.EscapeDataString(redirectUrl);
+            }
+            else if (platform == "mobile")
+            {
+                state = Uri.EscapeDataString("antamvietpharmacy://auth/callback");
+            }
+            else
+            {
+                state = Uri.EscapeDataString(_appSettings.FrontendUrl + "/auth/google/callback");
+            }
+
+            string googleUrl = $"https://accounts.google.com/o/oauth2/v2/auth" +
+                $"?response_type=code" +
+                $"&client_id={clientId}" +
+                $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+                $"&scope={scope}" +
+                $"&state={state}";
+
+            return Ok(new { url = googleUrl });
         }
         #endregion
 
         [HttpGet("google/callback")]
+        [AllowAnonymous]
         public async Task<IActionResult> GoogleCallback(
      [FromQuery] string code,
-     [FromQuery] string? state = null) // ✅ Thêm state
+     [FromQuery] string? state = null)
         {
-            
-
             if (string.IsNullOrEmpty(code))
                 return BadRequest("Authorization code not provided");
 
@@ -435,47 +456,58 @@ namespace Pharmacy_API.Controllers
                 if (!result.Succeeded)
                 {
                     return StatusCode(StatusCodes.Status400BadRequest,
-                        result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description })
-                        .First());
+                        result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
                 }
             }
 
+            // Tạo token
             await _distributedCache.RemoveAsync(user.Email ?? string.Empty);
             var claims = await _jwtAuthManager.GetUserClaims(user);
-            var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.Now);
+            var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.UtcNow);
             await _distributedCache.SetStringAsync(
                 user.Email ?? string.Empty,
                 jwtResult.AccessToken,
                 new DistributedCacheEntryOptions
                 {
-                    AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
+                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
                 });
 
             await _userManager.SetAuthenticationTokenAsync(
-                user,
-                _appSettings.Jwt.AppName,
-                _appSettings.Jwt.RefreshTokenName,
-                jwtResult.RefreshToken);
+                user, _appSettings.Jwt.AppName, _appSettings.Jwt.RefreshTokenName, jwtResult.RefreshToken);
 
-            // ✅ Nếu có state → redirect về app deep link
-            if (!string.IsNullOrEmpty(state))
+            // ✅ Tự động detect platform từ state
+            var decodedState = !string.IsNullOrEmpty(state) ? Uri.UnescapeDataString(state) : "";
+
+            // Mobile App: state = "antamvietpharmacy://auth/callback"
+            if (decodedState.StartsWith("antamvietpharmacy://"))
             {
-                Console.WriteLine($"[GoogleCallback] Redirecting to app: {state}");
-                var appDeepLink = Uri.UnescapeDataString(state);
-                var deepLinkUrl = $"{appDeepLink}" +
-                                  $"?accessToken={Uri.EscapeDataString(jwtResult.AccessToken)}" +
-                                  $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
-                                  $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
-                                  $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
-                                  $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
+                var deepLinkUrl = $"{decodedState}" +
+                    $"?accessToken={Uri.EscapeDataString(jwtResult.AccessToken)}" +
+                    $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
+                    $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
+                    $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
+                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
 
                 return Redirect(deepLinkUrl);
             }
 
-            // Fallback: Swagger/web → trả JSON
-            return Ok(new LoginResponseDto()
+            // Web: state = "http://localhost:3000/auth/google/callback"
+            if (decodedState.StartsWith("http"))
             {
-                Data = new UserDataDto()
+                var webRedirectUrl = $"{decodedState}" +
+                    $"?accessToken={Uri.EscapeDataString(jwtResult.AccessToken)}" +
+                    $"&refreshToken={Uri.EscapeDataString(jwtResult.RefreshToken)}" +
+                    $"&email={Uri.EscapeDataString(user.Email ?? "")}" +
+                    $"&userId={Uri.EscapeDataString(user.Id.ToString())}" +
+                    $"&name={Uri.EscapeDataString(user.UserName ?? "")}";
+
+                return Redirect(webRedirectUrl);
+            }
+
+            // Fallback: Trả JSON
+            return Ok(new LoginResponseDto
+            {
+                Data = new UserDataDto
                 {
                     Email = user.Email,
                     AccessToken = jwtResult.AccessToken,

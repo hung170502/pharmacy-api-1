@@ -11,9 +11,7 @@ namespace Pharmacy_API.Supports
         public DeepLinksSettings DeepLinksSettings { get; set; }
         public JwtSettings Jwt { get; set; }
         public Redis Redis { get; set; }
-
         public MailSettings MailSettings { get; set; }
-
         public Google Google { get; set; }
 
         public AppSettings()
@@ -24,9 +22,11 @@ namespace Pharmacy_API.Supports
             MailSettings = new MailSettings();
             ImageStoragePath = string.Empty;
             Google = new Google();
+            FrontendUrl = "http://localhost:3000";  // ✅ Thêm
         }
 
         public string ImageStoragePath { get; set; }
+        public string FrontendUrl { get; set; }  // ✅ Thêm
     }
 
     public class MailSettings
@@ -52,11 +52,7 @@ namespace Pharmacy_API.Supports
     public class Redis
     {
         public string Url { get; set; }
-
-        public Redis()
-        {
-            Url = string.Empty;
-        }
+        public Redis() { Url = string.Empty; }
     }
 
     public class DeepLinksSettings
