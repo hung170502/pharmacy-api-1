@@ -32,6 +32,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.StaticFiles;  // Thêm dòng này
 using Microsoft.Extensions.FileProviders; // Thêm dòng này
 using System.IO; // Thêm dòng này (nếu chưa có)
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -351,21 +352,35 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Pharmacy API V1");
     c.RoutePrefix = "swagger";
 });
-// ✅ Cấu hình phục vụ file tĩnh từ thư mục uploads
-app.UseStaticFiles(); // Phục vụ file từ wwwroot
-// ✅ THÊM MỚI: Cấu hình phục vụ file từ thư mục uploads (bên trong wwwroot)
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads")),
-    RequestPath = "/uploads",
-    OnPrepareResponse = ctx =>
-    {
-        // Cache ảnh trong 7 ngày
-        ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
-    }
-});
+app.UseStaticFiles();
 
+// Cấu hình phục vụ file upload với xử lý thư mục không tồn tại
+try
+{
+    var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+    var uploadsPath = Path.Combine(wwwrootPath, "uploads");
+    var brandsPath = Path.Combine(uploadsPath, "brands");
+
+    // Tạo thư mục nếu chưa tồn tại
+    if (!Directory.Exists(brandsPath))
+    {
+        Directory.CreateDirectory(brandsPath);
+    }
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(brandsPath),
+        RequestPath = "/uploads/brands",
+        OnPrepareResponse = ctx =>
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
+        }
+    });
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
+}
 app.UseStaticFiles();
 
 app.UseRouting();

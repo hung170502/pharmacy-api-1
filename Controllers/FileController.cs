@@ -16,10 +16,54 @@ namespace Pharmacy_API.Controllers
     public class FileController : ControllerBase
     {
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<FileController> _logger;
 
-        public FileController(IWebHostEnvironment environment)
+        public FileController(IWebHostEnvironment environment, ILogger<FileController> logger)
         {
             _environment = environment;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Lấy đường dẫn thư mục upload an toàn
+        /// </summary>
+        private string GetUploadFolder()
+        {
+            // Thử dùng WebRootPath trước
+            var webRoot = _environment.WebRootPath;
+
+            // Nếu WebRootPath null (trên Render), dùng ContentRootPath
+            if (string.IsNullOrEmpty(webRoot))
+            {
+                webRoot = Path.Combine(_environment.ContentRootPath, "wwwroot");
+            }
+
+            var uploadFolder = Path.Combine(webRoot, "uploads", "brands");
+
+            // Đảm bảo thư mục tồn tại
+            if (!Directory.Exists(uploadFolder))
+            {
+                try
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                    _logger.LogInformation($"Created upload folder: {uploadFolder}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to create upload folder: {uploadFolder}");
+
+                    // Fallback: dùng thư mục temp nếu không tạo được
+                    var tempFolder = Path.Combine(Path.GetTempPath(), "pharmacy_uploads", "brands");
+                    if (!Directory.Exists(tempFolder))
+                    {
+                        Directory.CreateDirectory(tempFolder);
+                    }
+                    _logger.LogInformation($"Using fallback temp folder: {tempFolder}");
+                    return tempFolder;
+                }
+            }
+
+            return uploadFolder;
         }
 
         /// <summary>
@@ -66,16 +110,8 @@ namespace Pharmacy_API.Controllers
                 // Tạo tên file duy nhất
                 var fileName = $"{Guid.NewGuid()}{extension}";
 
-                // Xác định thư mục upload
-                var uploadFolder = Path.Combine(_environment.WebRootPath ?? "wwwroot", "uploads", "brands");
-
-                // Tạo thư mục nếu chưa tồn tại
-                if (!Directory.Exists(uploadFolder))
-                {
-                    Directory.CreateDirectory(uploadFolder);
-                }
-
-                // Đường dẫn đầy đủ của file
+                // Lấy thư mục upload (có xử lý fallback)
+                var uploadFolder = GetUploadFolder();
                 var filePath = Path.Combine(uploadFolder, fileName);
 
                 // Lưu file
@@ -83,6 +119,8 @@ namespace Pharmacy_API.Controllers
                 {
                     await file.CopyToAsync(stream);
                 }
+
+                _logger.LogInformation($"File uploaded successfully: {fileName}");
 
                 // Tạo URL trả về
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -98,6 +136,7 @@ namespace Pharmacy_API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Upload image failed");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -124,6 +163,7 @@ namespace Pharmacy_API.Controllers
                 }
 
                 var uploadedFiles = new List<object>();
+                var uploadFolder = GetUploadFolder();
 
                 foreach (var file in files)
                 {
@@ -144,15 +184,6 @@ namespace Pharmacy_API.Controllers
 
                     // Tạo tên file duy nhất
                     var fileName = $"{Guid.NewGuid()}{extension}";
-
-                    // Xác định thư mục upload
-                    var uploadFolder = Path.Combine(_environment.WebRootPath ?? "wwwroot", "uploads", "brands");
-
-                    if (!Directory.Exists(uploadFolder))
-                    {
-                        Directory.CreateDirectory(uploadFolder);
-                    }
-
                     var filePath = Path.Combine(uploadFolder, fileName);
 
                     using (var stream = new FileStream(filePath, FileMode.Create))
@@ -180,6 +211,7 @@ namespace Pharmacy_API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Upload multiple images failed");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -201,11 +233,13 @@ namespace Pharmacy_API.Controllers
                     return BadRequest(new { success = false, message = "Tên file không hợp lệ" });
                 }
 
-                var filePath = Path.Combine(_environment.WebRootPath ?? "wwwroot", "uploads", "brands", fileName);
+                var uploadFolder = GetUploadFolder();
+                var filePath = Path.Combine(uploadFolder, fileName);
 
                 if (System.IO.File.Exists(filePath))
                 {
                     System.IO.File.Delete(filePath);
+                    _logger.LogInformation($"File deleted successfully: {fileName}");
                     return Ok(new { success = true, message = "Xóa ảnh thành công" });
                 }
 
@@ -213,6 +247,7 @@ namespace Pharmacy_API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Delete image failed");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -227,18 +262,12 @@ namespace Pharmacy_API.Controllers
         [HttpGet("default-image")]
         public IActionResult GetDefaultImage()
         {
-            var defaultImagePath = Path.Combine(_environment.WebRootPath ?? "wwwroot", "uploads", "brands", "default-brand.png");
+            var uploadFolder = GetUploadFolder();
+            var defaultImagePath = Path.Combine(uploadFolder, "default-brand.png");
 
             // Nếu không có ảnh mặc định, tạo placeholder
             if (!System.IO.File.Exists(defaultImagePath))
             {
-                // Tạo thư mục nếu chưa có
-                var uploadFolder = Path.Combine(_environment.WebRootPath ?? "wwwroot", "uploads", "brands");
-                if (!Directory.Exists(uploadFolder))
-                {
-                    Directory.CreateDirectory(uploadFolder);
-                }
-
                 // Trả về base64 image placeholder
                 var base64Image = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
 
