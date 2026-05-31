@@ -8,6 +8,7 @@ namespace Pharmacy_API.Dtos.Account
         [StringLength(256)]
         public string UserName { get; set; }
 
+
         [StringLength(256)]
         public string Email { get; set; }
 
@@ -19,7 +20,6 @@ namespace Pharmacy_API.Dtos.Account
         public UserRequestDto()
         {
             UserName = "";
-            Password = "";
             Email = "";
             PhoneNumber = "";
             RoleIds = new List<string>();
