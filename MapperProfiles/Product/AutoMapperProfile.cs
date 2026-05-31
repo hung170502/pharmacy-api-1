@@ -12,16 +12,27 @@ namespace Pharmacy_API.MapperProfiles.Product
     {
         public AutoMapperProfile()
         {
-            // Ánh xạ từ Product entity sang ProductDto
+            // ✅ Product Entity → ProductDto
             CreateMap<Pharmacy_API.Models.Product.Product, ProductDto>()
-                .ForMember(dest => dest.Brand, opt => opt.MapFrom(src => src.Brand.BrandName))
-                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category.CategoryName))
-                .ForMember(dest => dest.BrandOrigin, opt => opt.MapFrom(src => src.Country.CountryName))
-                .ForMember(dest => dest.Unit, opt => opt.MapFrom(src => src.Unit.UnitName))
-                .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer.CountryName));
+                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : ""))
+                .ForMember(dest => dest.Brand, opt => opt.MapFrom(src => src.Brand != null ? src.Brand.BrandName : ""))
+                .ForMember(dest => dest.Unit, opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : ""))
+                .ForMember(dest => dest.BrandOrigin, opt => opt.MapFrom(src => src.Country != null ? src.Country.CountryName : ""))
+                .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer != null ? src.Manufacturer.CountryName : ""));
 
-            // Ánh xạ từ ProductRequestDto sang Product entity
-            CreateMap<ProductRequestDto, Pharmacy_API.Models.Product.Product>();
+            // ✅ ProductRequestDto → Product Entity
+            CreateMap<ProductRequestDto, Pharmacy_API.Models.Product.Product>()
+                .ForMember(dest => dest.ProductId, opt => opt.Ignore())
+                .ForMember(dest => dest.Brand, opt => opt.Ignore())
+                .ForMember(dest => dest.Category, opt => opt.Ignore())
+                .ForMember(dest => dest.Unit, opt => opt.Ignore())
+                .ForMember(dest => dest.Country, opt => opt.Ignore())
+                .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())  // Navigation property
+                .ForMember(dest => dest.ManufacturerId, opt => opt.Ignore())  // Không có trong RequestDto
+                .ForMember(dest => dest.BrandOriginId, opt => opt.MapFrom(src => src.CountryId))  // Map CountryId → BrandOriginId
+                .ForMember(dest => dest.ImageFile, opt => opt.Ignore())
+                .ForMember(dest => dest.StockStatus, opt => opt.MapFrom(src =>
+                    src.StockStatus == "InStock" ? StockStatus.InStock : StockStatus.OutOfStock));
         }
     }
 }

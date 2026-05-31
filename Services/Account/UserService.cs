@@ -124,7 +124,7 @@ namespace Pharmacy_API.Services.Account
                     <p><strong>Mật khẩu:</strong> {generatedPassword}</p>
                 </div>
                 <p style='color: #dc2626; font-size: 13px;'>⚠️ Vui lòng đăng nhập và đổi mật khẩu ngay sau lần đầu sử dụng.</p>
-                <a href='https://hongochung.onrender.com/login' style='display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;'>Đăng nhập ngay</a>
+                <a href='http://localhost:3000/login' style='display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;'>Đăng nhập ngay</a>
             </div>";
 
                 await _emailSender.SendEmailAsync(requestDto.Email, "Tài khoản Nhà thuốc An Tâm Việt", emailContent);
