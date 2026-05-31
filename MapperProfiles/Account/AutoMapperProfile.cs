@@ -29,7 +29,7 @@ namespace Pharmacy_API.MapperProfiles.Account
             #endregion
 
             #region Role Mapper 
-            CreateMap<Role, RoleDto>();
+            CreateMap<Role, RoleDto>().ForMember(dest => dest.UserCount, opt => opt.Ignore());
             CreateMap<RoleFilterDto, RoleFilter>();
             CreateMap<RoleRequestDto, Role>().ForMember(dest => dest.RolePolicies, opt => opt.Ignore());
             CreateMap<Role, RoleDto>().ForMember(dest => dest.Policies, opt => opt.MapFrom(src => src.RolePolicies.Select(ur => ur.Policy)));

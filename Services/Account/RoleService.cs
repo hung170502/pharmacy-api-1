@@ -6,6 +6,8 @@ using Pharmacy_API.Models.Account;
 using Pharmacy_API.Repositories.Account;
 using Pharmacy_API.Dtos.Account;
 using Pharmacy_API.Filters.Account;
+using Pharmacy_API.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace Pharmacy_API.Services.Account
 {
@@ -16,6 +18,7 @@ namespace Pharmacy_API.Services.Account
         private readonly IMapper _mapper;
         protected readonly IRoleRepository _roleRepository;
         protected readonly IRolePolicyRepository _rolePolicyRepository;
+        private readonly AccountContext _context;  // ✅ Thêm
 
         #endregion
 
@@ -24,13 +27,16 @@ namespace Pharmacy_API.Services.Account
             ILogger<RoleService> logger,
             IMapper mapper,
             IRoleRepository roleRepository,
-            IRolePolicyRepository rolePolicyRepository
-            )
+            IRolePolicyRepository rolePolicyRepository,
+            AccountContext context)  // ✅ Thêm
+
+            
         {
             _logger = logger;
             _mapper = mapper;
             _roleRepository = roleRepository;
             _rolePolicyRepository = rolePolicyRepository;
+            _context = context;
         }
         #endregion
 
@@ -141,7 +147,9 @@ namespace Pharmacy_API.Services.Account
             Role? role = await _roleRepository.GetByIdAsync(id, isDeep);
             if (role != null)
             {
-                return _mapper.Map<Role, RoleDto>(role);
+                var dto = _mapper.Map<Role, RoleDto>(role);
+                dto.UserCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == id);  // ✅ Thêm
+                return dto;
             }
 
             return null;
@@ -158,13 +166,14 @@ namespace Pharmacy_API.Services.Account
             List<RoleDto> dtos = new List<RoleDto>();
             foreach (Role item in dt.Data)
             {
-                dtos.Add(_mapper.Map<Role, RoleDto>(item));
+                var dto = _mapper.Map<Role, RoleDto>(item);
+                dto.UserCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == item.Id);  // ✅ Thêm
+                dtos.Add(dto);
             }
 
             return new PagedDto<RoleDto>(dt.TotalRecords, dtos);
         }
         #endregion
-        // Thêm vào class
         public async Task<bool> AssignPoliciesToRoleAsync(string roleId, List<string> policyIds)
         {
             try
