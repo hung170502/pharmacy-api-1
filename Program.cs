@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
@@ -28,7 +29,9 @@ using System.Net;
 using System.Net.Mail;
 using System.Text;
 using System.Text.Json.Serialization;
-
+using Microsoft.AspNetCore.StaticFiles;  // Thêm dòng này
+using Microsoft.Extensions.FileProviders; // Thêm dòng này
+using System.IO; // Thêm dòng này (nếu chưa có)
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -348,7 +351,20 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Pharmacy API V1");
     c.RoutePrefix = "swagger";
 });
-
+// ✅ Cấu hình phục vụ file tĩnh từ thư mục uploads
+app.UseStaticFiles(); // Phục vụ file từ wwwroot
+// ✅ THÊM MỚI: Cấu hình phục vụ file từ thư mục uploads (bên trong wwwroot)
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads")),
+    RequestPath = "/uploads",
+    OnPrepareResponse = ctx =>
+    {
+        // Cache ảnh trong 7 ngày
+        ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
+    }
+});
 
 app.UseStaticFiles();
 

@@ -243,3 +243,6 @@ docker/
 applications/NVC.Blazor/wwwroot/images/
 appsettings.Development.json
 appsettings*.local.json
+# Uploaded files
+wwwroot/uploads/
+!wwwroot/uploads/.gitkeep
