@@ -9,9 +9,6 @@ namespace Pharmacy_API.Dtos.Account
         public string UserName { get; set; }
 
         [StringLength(256)]
-        public string? Password { get; set; }
-
-        [StringLength(256)]
         public string Email { get; set; }
 
         [StringLength(4000)]

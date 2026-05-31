@@ -29,6 +29,7 @@ namespace Pharmacy_API.Services.Account
         protected readonly IPolicyPermissionRepository _policyPermissionRepository;
         protected readonly IPermissionRepository _permissionRepository;
         private readonly AppSettings _appSettings;
+        private readonly IEmailSenderService _emailSender;  // ✅ Thêm
         #endregion
 
         #region Constructors
@@ -42,7 +43,8 @@ namespace Pharmacy_API.Services.Account
             IRolePolicyRepository rolePolicyRepository,
             IPolicyPermissionRepository policyPermissionRepository,
             IPermissionRepository permissionRepository,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            IEmailSenderService emailSender)
         {
             _logger = logger;
             _mapper = mapper;
@@ -54,6 +56,7 @@ namespace Pharmacy_API.Services.Account
             _policyPermissionRepository = policyPermissionRepository;
             _permissionRepository = permissionRepository;
             _appSettings = appSettings.Value;
+            _emailSender = emailSender;  // ✅ Thêm
         }
         #endregion
 
@@ -61,6 +64,9 @@ namespace Pharmacy_API.Services.Account
         public async Task<UserDto?> InsertUserAsync(UserRequestDto requestDto)
         {
             _logger.LogInformation("Insert User");
+
+            // ✅ Tự động generate mật khẩu ngẫu nhiên
+            var generatedPassword = GenerateRandomPassword();
 
             var user = new ApplicationUser
             {
@@ -72,7 +78,8 @@ namespace Pharmacy_API.Services.Account
                 EmailConfirmed = true,
             };
 
-            var newUser = await _userManager.CreateAsync(user, requestDto.Password);
+            // ✅ Dùng mật khẩu tự generate
+            var newUser = await _userManager.CreateAsync(user, generatedPassword);
 
             if (!newUser.Succeeded)
             {
@@ -103,6 +110,31 @@ namespace Pharmacy_API.Services.Account
             }
 
             _logger.LogInformation("User created successfully");
+
+            // ✅ Gửi email với mật khẩu tự generate
+            try
+            {
+                string emailContent = $@"
+            <div style='font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;'>
+                <h2 style='color: #2563eb;'>Nhà thuốc An Tâm Việt</h2>
+                <p>Xin chào <strong>{requestDto.UserName}</strong>,</p>
+                <p>Tài khoản nhân viên của bạn đã được tạo thành công.</p>
+                <div style='background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;'>
+                    <p><strong>Email đăng nhập:</strong> {requestDto.Email}</p>
+                    <p><strong>Mật khẩu:</strong> {generatedPassword}</p>
+                </div>
+                <p style='color: #dc2626; font-size: 13px;'>⚠️ Vui lòng đăng nhập và đổi mật khẩu ngay sau lần đầu sử dụng.</p>
+                <a href='https://hongochung.onrender.com/login' style='display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;'>Đăng nhập ngay</a>
+            </div>";
+
+                await _emailSender.SendEmailAsync(requestDto.Email, "Tài khoản Nhà thuốc An Tâm Việt", emailContent);
+                _logger.LogInformation($"Email sent to {requestDto.Email}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send email: {ex.Message}");
+            }
+
 
             var roleNamesOfNewUser = await _userManager.GetRolesAsync(user);
 
@@ -352,6 +384,34 @@ namespace Pharmacy_API.Services.Account
             }
 
             return permissions;
+        }
+        #endregion
+        #region Helper
+        private string GenerateRandomPassword(int length = 10)
+        {
+            const string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string lowercase = "abcdefghijklmnopqrstuvwxyz";
+            const string digits = "0123456789";
+            const string special = "!@#$%";
+
+            var random = new Random();
+            var password = new char[length];
+
+            // Đảm bảo có ít nhất 1 ký tự mỗi loại
+            password[0] = uppercase[random.Next(uppercase.Length)];
+            password[1] = lowercase[random.Next(lowercase.Length)];
+            password[2] = digits[random.Next(digits.Length)];
+            password[3] = special[random.Next(special.Length)];
+
+            // Phần còn lại random
+            string allChars = uppercase + lowercase + digits + special;
+            for (int i = 4; i < length; i++)
+            {
+                password[i] = allChars[random.Next(allChars.Length)];
+            }
+
+            // Xáo trộn
+            return new string(password.OrderBy(x => random.Next()).ToArray());
         }
         #endregion
     }
