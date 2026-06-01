@@ -277,7 +277,20 @@ builder.Services.AddResponseCompression(options =>
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
-builder.Services.AddDistributedMemoryCache();
+// Redis Cache (hoặc Memory Cache fallback)
+var redisUrl = builder.Configuration["Redis:Url"];
+if (!string.IsNullOrEmpty(redisUrl))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisUrl;
+        options.InstanceName = "PharmacyAPI_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 builder.Services.AddAutoMapper(
     typeof(AutoMapperProfile).Assembly
