@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
@@ -15,7 +15,7 @@ namespace Pharmacy_API.Supports
             _next = next;
             _distributedCache = distributedCache;
         }
-       
+
         /// <summary>
         /// Middleware for handling JWT tokens.
         /// </summary>
@@ -24,7 +24,6 @@ namespace Pharmacy_API.Supports
         /// <returns>A Task representing the asynchronous operation.</returns>
         public async Task InvokeAsync(HttpContext context, ILogger<JwtMiddleware> logger)
         {
-            //logic here
             var token = context.Request.Headers["Authorization"]
                 .FirstOrDefault()?
                 .Split(" ").LastOrDefault();
@@ -32,15 +31,33 @@ namespace Pharmacy_API.Supports
             if (!string.IsNullOrWhiteSpace(token))
             {
                 var username = context.User.FindFirstValue(ClaimTypes.Email);
-                string? refreshTokenCache = null;
-                if (!string.IsNullOrWhiteSpace(username))
-                    refreshTokenCache = await _distributedCache.GetStringAsync(username);
 
-                if (string.IsNullOrWhiteSpace(refreshTokenCache) || token != refreshTokenCache)
+                if (!string.IsNullOrWhiteSpace(username))
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("Unauthorized");
-                    return;
+                    var refreshTokenCache = await _distributedCache.GetStringAsync(username);
+
+                    // ✅ Parse JSON từ Redis nếu cần
+                    if (!string.IsNullOrWhiteSpace(refreshTokenCache))
+                    {
+                        try
+                        {
+                            // Thử parse JSON {"value":"..."}
+                            var json = System.Text.Json.JsonDocument.Parse(refreshTokenCache);
+                            if (json.RootElement.TryGetProperty("value", out var valueProp))
+                            {
+                                refreshTokenCache = valueProp.GetString();
+                            }
+                        }
+                        catch { /* Không phải JSON, dùng giá trị gốc */ }
+                    }
+
+                    // So sánh token
+                    if (string.IsNullOrWhiteSpace(refreshTokenCache) || token != refreshTokenCache)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsync("Unauthorized");
+                        return;
+                    }
                 }
             }
 
