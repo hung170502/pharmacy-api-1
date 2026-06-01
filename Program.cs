@@ -380,56 +380,48 @@ app.UseSwaggerUI(c =>
 });
 app.UseStaticFiles();
 
-// Cấu hình phục vụ file upload với xử lý thư mục không tồn tại
+// Cấu hình phục vụ file upload cho Brands, Categories, Products
 try
 {
     var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
     var uploadsPath = Path.Combine(wwwrootPath, "uploads");
-    var brandsPath = Path.Combine(uploadsPath, "brands");
 
-    // Tạo thư mục nếu chưa tồn tại
-    if (!Directory.Exists(brandsPath))
-    {
-        Directory.CreateDirectory(brandsPath);
-    }
+    // Brands
+    var brandsPath = Path.Combine(uploadsPath, "brands");
+    if (!Directory.Exists(brandsPath)) Directory.CreateDirectory(brandsPath);
 
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(brandsPath),
         RequestPath = "/uploads/brands",
-        OnPrepareResponse = ctx =>
-        {
-            ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
-        }
+        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
     });
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
-}
-// Cấu hình phục vụ file upload cho Categories
-try
-{
-    var categoriesPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads", "categories");
 
-    if (!Directory.Exists(categoriesPath))
-    {
-        Directory.CreateDirectory(categoriesPath);
-    }
+    // Categories
+    var categoriesPath = Path.Combine(uploadsPath, "categories");
+    if (!Directory.Exists(categoriesPath)) Directory.CreateDirectory(categoriesPath);
 
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(categoriesPath),
         RequestPath = "/uploads/categories",
-        OnPrepareResponse = ctx =>
-        {
-            ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
-        }
+        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
+    });
+
+    // Products
+    var productsPath = Path.Combine(uploadsPath, "products");
+    if (!Directory.Exists(productsPath)) Directory.CreateDirectory(productsPath);
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(productsPath),
+        RequestPath = "/uploads/products",
+        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
     });
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Warning: Could not configure categories static files: {ex.Message}");
+    Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
 }
 
 app.UseRouting();
