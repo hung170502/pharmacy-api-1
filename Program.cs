@@ -30,9 +30,8 @@ using System.Net.Mail;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.StaticFiles;  // Thêm dòng này
-using Microsoft.Extensions.FileProviders; // Thêm dòng này
-using System.IO; // Thêm dòng này (nếu chưa có)
-
+using Pharmacy_API.Services.Redis;
+using Microsoft.Extensions.Caching.Distributed;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -277,20 +276,15 @@ builder.Services.AddResponseCompression(options =>
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
-// Redis Cache (hoặc Memory Cache fallback)
-var redisUrl = builder.Configuration["Redis:Url"];
-if (!string.IsNullOrEmpty(redisUrl))
+builder.Services.AddHttpClient();  // ✅ Thêm HttpClient
+builder.Services.AddSingleton<IDistributedCache>(sp =>
 {
-    builder.Services.AddStackExchangeRedisCache(options =>
-    {
-        options.Configuration = redisUrl;
-        options.InstanceName = "PharmacyAPI_";
-    });
-}
-else
-{
-    builder.Services.AddDistributedMemoryCache();
-}
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient();
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var logger = sp.GetRequiredService<ILogger<RedisCacheService>>();
+    return new RedisCacheService(httpClient, configuration, logger);
+});
 
 builder.Services.AddAutoMapper(
     typeof(AutoMapperProfile).Assembly
