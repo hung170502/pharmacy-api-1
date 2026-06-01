@@ -18,5 +18,7 @@
             public IFormFile? ImageFile { get; set; }
             public List<Models.Category.Category>? Children { get; set; }
             public List<Models.Product.Product>? Products { get; set; }
-        }
+            // ✅ Thêm field này
+            public int ProductCount { get; set; }
+    }
     }

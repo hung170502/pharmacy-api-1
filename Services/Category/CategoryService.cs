@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;  // ✅ Thêm
+using Pharmacy_API.Context;  // ✅ Thêm
 using Pharmacy_API.Dtos.Account;
 using Pharmacy_API.Dtos.Category;
 using Pharmacy_API.Filters.Account;
@@ -16,15 +18,18 @@ namespace Pharmacy_API.Services.Category
         private readonly ILogger<CategoryService> _logger;
         private readonly IMapper _mapper;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly AccountContext _context;  // ✅ Thêm
 
         public CategoryService(
             ILogger<CategoryService> logger,
             IMapper mapper,
-            ICategoryRepository categoryRepository)
+            ICategoryRepository categoryRepository,
+            AccountContext context)
         {
             _logger = logger;
             _mapper = mapper;
             _categoryRepository = categoryRepository;
+            _context = context;
         }
 
         #region Insert Category
@@ -104,7 +109,13 @@ namespace Pharmacy_API.Services.Category
             List<CategoryDto> dtos = new List<CategoryDto>();
             foreach (Pharmacy_API.Models.Category.Category item in dt.Data)
             {
-                dtos.Add(_mapper.Map<Pharmacy_API.Models.Category.Category, CategoryDto>(item));
+                var dto = _mapper.Map<Pharmacy_API.Models.Category.Category, CategoryDto>(item);
+
+                // ✅ Đếm số sản phẩm trong danh mục
+                dto.ProductCount = await _context.Products
+                    .CountAsync(p => p.CategoryId == item.CategoryId);
+
+                dtos.Add(dto);
             }
 
             return new PagedDto<CategoryDto>(dt.TotalRecords, dtos);
