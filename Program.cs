@@ -407,7 +407,30 @@ catch (Exception ex)
 {
     Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
 }
-app.UseStaticFiles();
+// Cấu hình phục vụ file upload cho Categories
+try
+{
+    var categoriesPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads", "categories");
+
+    if (!Directory.Exists(categoriesPath))
+    {
+        Directory.CreateDirectory(categoriesPath);
+    }
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(categoriesPath),
+        RequestPath = "/uploads/categories",
+        OnPrepareResponse = ctx =>
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800");
+        }
+    });
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning: Could not configure categories static files: {ex.Message}");
+}
 
 app.UseRouting();
 
