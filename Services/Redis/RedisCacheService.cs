@@ -1,8 +1,9 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using System.Text;
-using Microsoft.Extensions.Configuration;
+
 namespace Pharmacy_API.Services.Redis
 {
     public class RedisCacheService : IDistributedCache
@@ -15,24 +16,26 @@ namespace Pharmacy_API.Services.Redis
         public RedisCacheService(HttpClient httpClient, IConfiguration configuration, ILogger<RedisCacheService> logger)
         {
             _httpClient = httpClient;
-            _baseUrl = configuration["Upstash:RestUrl"] ?? "";
+            _baseUrl = configuration["Upstash:RestUrl"] ?? "https://honest-bat-74659.upstash.io";
             _token = configuration["Upstash:RestToken"] ?? "";
             _logger = logger;
 
+            // ✅ Set BaseAddress
+            _httpClient.BaseAddress = new Uri(_baseUrl);
             _httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _token);
+            _httpClient.Timeout = TimeSpan.FromSeconds(10);
         }
 
-        public byte[]? Get(string key)
-        {
-            return GetAsync(key).GetAwaiter().GetResult();
-        }
+        public byte[]? Get(string key) => GetAsync(key).GetAwaiter().GetResult();
 
         public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}/get/{key}", token);
+                // ✅ Dùng relative URL vì đã có BaseAddress
+                var response = await _httpClient.GetAsync($"/get/{key}", token);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
@@ -40,6 +43,7 @@ namespace Pharmacy_API.Services.Redis
                     var data = result.RootElement.GetProperty("result").GetString();
                     return data != null ? Encoding.UTF8.GetBytes(data) : null;
                 }
+                _logger.LogWarning($"Redis GET {key}: {response.StatusCode}");
                 return null;
             }
             catch (Exception ex)
@@ -50,19 +54,17 @@ namespace Pharmacy_API.Services.Redis
         }
 
         public void Refresh(string key) { }
-
         public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
 
-        public void Remove(string key)
-        {
-            RemoveAsync(key).GetAwaiter().GetResult();
-        }
+        public void Remove(string key) => RemoveAsync(key).GetAwaiter().GetResult();
 
         public async Task RemoveAsync(string key, CancellationToken token = default)
         {
             try
             {
-                await _httpClient.DeleteAsync($"{_baseUrl}/del/{key}", token);
+                // ✅ Dùng POST /del/{key} thay vì DELETE
+                var response = await _httpClient.PostAsync($"/del/{key}", null, token);
+                _logger.LogInformation($"Redis DEL {key}: {response.StatusCode}");
             }
             catch (Exception ex)
             {
@@ -71,9 +73,7 @@ namespace Pharmacy_API.Services.Redis
         }
 
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
-        {
-            SetAsync(key, value, options).GetAwaiter().GetResult();
-        }
+            => SetAsync(key, value, options).GetAwaiter().GetResult();
 
         public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
         {
@@ -82,13 +82,22 @@ namespace Pharmacy_API.Services.Redis
                 var stringValue = Encoding.UTF8.GetString(value);
                 var expiry = options.AbsoluteExpirationRelativeToNow?.TotalSeconds ?? 300;
 
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("value", stringValue),
-                    new KeyValuePair<string, string>("ex", ((int)expiry).ToString()),
-                });
+                // ✅ Dùng API /set/{key} thay vì pipeline
+                var payload = new { value = stringValue, ex = (int)expiry };
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                await _httpClient.PostAsync($"{_baseUrl}/set/{key}", content, token);
+                var response = await _httpClient.PostAsync($"/set/{key}", content, token);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"Redis SET {key}: OK");
+                }
+                else
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Redis SET failed: {errorBody}");
+                }
             }
             catch (Exception ex)
             {

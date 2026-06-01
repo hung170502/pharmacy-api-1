@@ -9,6 +9,7 @@ namespace Pharmacy_API.Controllers
 {
     [Route("api/Catalog/[controller]")]
     [ApiController]
+    [Authorize]
     public class CategoryController : ApiControllerBase
     {
         private readonly ICategoryService _categoryService;

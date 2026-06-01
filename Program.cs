@@ -104,8 +104,23 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
-            ValidAudience = jwtAudience,
-            ValidIssuer = jwtIssuer,
+            // ✅ Hỗ trợ nhiều Issuer (Local + Render)
+            ValidIssuers = new[]
+        {
+            jwtIssuer,                              // https://hongochung.onrender.com
+            "http://localhost:5188",
+            "http://127.0.0.1:5188",
+            "http://192.168.1.5:5188",
+            "https://localhost:5001",
+        },
+            ValidAudiences = new[]
+        {
+            jwtAudience,                            // https://hongochung.onrender.com
+            "http://localhost:5188",
+            "http://127.0.0.1:5188",
+            "http://192.168.1.5:5188",
+            "https://localhost:5001",
+        },
 
             IssuerSigningKey =
                 new SymmetricSecurityKey(
@@ -276,13 +291,17 @@ builder.Services.AddResponseCompression(options =>
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
-builder.Services.AddHttpClient();  // ✅ Thêm HttpClient
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IDistributedCache>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var httpClient = httpClientFactory.CreateClient();
     var configuration = sp.GetRequiredService<IConfiguration>();
     var logger = sp.GetRequiredService<ILogger<RedisCacheService>>();
+
+    // ✅ Set BaseAddress
+    httpClient.BaseAddress = new Uri(configuration["Upstash:RestUrl"] ?? "https://honest-bat-74659.upstash.io");
+
     return new RedisCacheService(httpClient, configuration, logger);
 });
 
