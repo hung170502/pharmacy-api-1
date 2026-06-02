@@ -1,6 +1,4 @@
-﻿
-namespace Pharmacy_API.Models.Product
-
+﻿namespace Pharmacy_API.Models.Product
 {
     public class ProductFilterDto
     {
@@ -11,10 +9,12 @@ namespace Pharmacy_API.Models.Product
 
         public int? CategoryId { get; set; } // Lọc theo danh mục
         public int? BrandId { get; set; } // Lọc theo thương hiệu
-        public int? CountryId { get; set; } // Lọc theo xuất xứ
+        public int? BrandOriginId { get; set; } // Lọc theo xuất xứ (đổi từ CountryId)
         public int? UnitId { get; set; } // Lọc theo đơn vị
 
         public double? MinPrice { get; set; } // Giá từ
         public double? MaxPrice { get; set; } // Giá đến
+
+        public StockStatus? StockStatus { get; set; } // Lọc theo trạng thái tồn kho (Còn hàng/Hết hàng)
     }
 }

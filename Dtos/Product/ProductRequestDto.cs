@@ -1,5 +1,6 @@
 ﻿using Pharmacy_API.Models.Product;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Pharmacy_API.Dtos.Product
 {
@@ -38,11 +39,10 @@ namespace Pharmacy_API.Dtos.Product
         [StringLength(350)]
         public string? Packaging { get; set; }
 
-        // SỬA: Đổi tên cho khớp Model
-        public int BrandOriginId { get; set; }  // Thay vì CountryId
+        [JsonPropertyName("countryId")] // Hỗ trợ client gửi field "countryId"
+        public int BrandOriginId { get; set; }
 
-        // SỬA: Đổi thành int và thêm Id
-        public int ManufacturerId { get; set; }  // Thay vì Manufacturer (string)
+        public int ManufacturerId { get; set; }
 
         [StringLength(350)]
         public string? Ingredients { get; set; }

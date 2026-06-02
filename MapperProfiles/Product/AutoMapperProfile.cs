@@ -1,10 +1,6 @@
 ﻿using AutoMapper;
-using Pharmacy_API.Dtos.Account;
 using Pharmacy_API.Dtos.Product;
-using Pharmacy_API.Filters.Account;
-using Pharmacy_API.Models.Account;
 using Pharmacy_API.Models.Product;
-using System.Security;
 
 namespace Pharmacy_API.MapperProfiles.Product
 {
@@ -14,11 +10,18 @@ namespace Pharmacy_API.MapperProfiles.Product
         {
             // ✅ Product Entity → ProductDto
             CreateMap<Pharmacy_API.Models.Product.Product, ProductDto>()
-                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : ""))
-                .ForMember(dest => dest.Brand, opt => opt.MapFrom(src => src.Brand != null ? src.Brand.BrandName : ""))
-                .ForMember(dest => dest.Unit, opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : ""))
-                .ForMember(dest => dest.BrandOrigin, opt => opt.MapFrom(src => src.Country != null ? src.Country.CountryName : ""))
-                .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer != null ? src.Manufacturer.CountryName : ""));
+                .ForMember(dest => dest.Category,
+                    opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : ""))
+                .ForMember(dest => dest.Brand,
+                    opt => opt.MapFrom(src => src.Brand != null ? src.Brand.BrandName : ""))
+                .ForMember(dest => dest.Unit,
+                    opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : ""))
+                .ForMember(dest => dest.BrandOrigin,
+                    opt => opt.MapFrom(src => src.Country != null ? src.Country.CountryName : ""))
+                .ForMember(dest => dest.Manufacturer,
+                    opt => opt.MapFrom(src => src.Manufacturer != null ? src.Manufacturer.CountryName : ""))
+                .ForMember(dest => dest.StockStatus,
+                    opt => opt.MapFrom(src => src.StockStatus.ToString()));
 
             // ✅ ProductRequestDto → Product Entity
             CreateMap<ProductRequestDto, Pharmacy_API.Models.Product.Product>()
@@ -27,12 +30,8 @@ namespace Pharmacy_API.MapperProfiles.Product
                 .ForMember(dest => dest.Category, opt => opt.Ignore())
                 .ForMember(dest => dest.Unit, opt => opt.Ignore())
                 .ForMember(dest => dest.Country, opt => opt.Ignore())
-                .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())  // Navigation property
-                .ForMember(dest => dest.ManufacturerId, opt => opt.Ignore())  // Không có trong RequestDto
-                .ForMember(dest => dest.BrandOriginId, opt => opt.MapFrom(src => src.CountryId))  // Map CountryId → BrandOriginId
-                .ForMember(dest => dest.ImageFile, opt => opt.Ignore())
-                .ForMember(dest => dest.StockStatus, opt => opt.MapFrom(src =>
-                    src.StockStatus == "InStock" ? StockStatus.InStock : StockStatus.OutOfStock));
+                .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
+                .ForMember(dest => dest.ImageFile, opt => opt.Ignore());
         }
     }
 }
