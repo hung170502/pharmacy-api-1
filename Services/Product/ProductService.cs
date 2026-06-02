@@ -83,6 +83,12 @@ namespace Pharmacy_API.Services.Product
         {
             var product = _mapper.Map<Models.Product.Product>(requestDto);
 
+            // ✅ Tự động sinh ProductCode nếu chưa có
+            if (string.IsNullOrEmpty(product.ProductCode))
+            {
+                product.ProductCode = await GenerateProductCodeAsync();
+            }
+
             product.ActiveFrom = requestDto.ActiveFrom;
             product.IsActive = requestDto.IsActive;
 
@@ -98,6 +104,9 @@ namespace Pharmacy_API.Services.Product
             if (existingProduct == null) return null;
 
             _mapper.Map(requestDto, existingProduct);
+
+            // ✅ Giữ nguyên ProductCode cũ khi update (không thay đổi)
+            // Nếu client gửi ProductCode mới thì sẽ được map tự động
 
             existingProduct.ActiveFrom = requestDto.ActiveFrom;
             existingProduct.IsActive = requestDto.IsActive;
@@ -116,6 +125,25 @@ namespace Pharmacy_API.Services.Product
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        /// <summary>
+        /// Tự động sinh mã sản phẩm ngẫu nhiên 8 ký tự (chữ hoa + số), không trùng lặp
+        /// </summary>
+        private async Task<string> GenerateProductCodeAsync()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            string code;
+
+            do
+            {
+                code = new string(Enumerable.Repeat(chars, 8)
+                    .Select(s => s[random.Next(s.Length)]).ToArray());
+            }
+            while (await _context.Products.AnyAsync(p => p.ProductCode == code)); // Đảm bảo không trùng
+
+            return code;
         }
     }
 }
