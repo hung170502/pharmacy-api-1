@@ -13,6 +13,11 @@ namespace Pharmacy_API.Models.Product
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int ProductId { get; set; }
+        /// <summary>
+        /// Mã sản phẩm (vd: P01045)
+        /// </summary>
+        [StringLength(50)]
+        public string? ProductCode { get; set; }
         [Required]
         [StringLength(350)]
         public string? ProductName { get; set; }

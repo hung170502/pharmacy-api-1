@@ -6,6 +6,9 @@ namespace Pharmacy_API.Dtos.Product
 {
     public class ProductRequestDto
     {
+
+        [StringLength(50)]
+        public string? ProductCode { get; set; }
         [Required]
         [StringLength(350)]
         public string ProductName { get; set; } = string.Empty;
