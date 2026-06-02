@@ -355,6 +355,14 @@ builder.Services
     {
         options.JsonSerializerOptions.Converters
             .Add(new JsonStringEnumConverter());
+
+        // ✅ Fix lỗi object cycle JSON
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+
+        // ✅ (Tùy chọn) Bỏ qua field null cho response gọn hơn
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
 var app = builder.Build();
