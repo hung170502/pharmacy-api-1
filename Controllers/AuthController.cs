@@ -30,6 +30,7 @@ namespace Pharmacy_API.Controllers
         private readonly ILogger _logger;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<Role> _roleManager;
         private readonly IJwtAuthManagerService _jwtAuthManager;
         private readonly AppSettings _appSettings;
         private readonly IAuthManagerService _authManagerService;
@@ -42,6 +43,7 @@ namespace Pharmacy_API.Controllers
               ILogger<AuthController> logger,
               SignInManager<ApplicationUser> signInManager,
               UserManager<ApplicationUser> userManager,
+              RoleManager<Role> roleManager,
               IJwtAuthManagerService jwtAuthManager,
               IDistributedCache distributedCache,
               IAuthManagerService authManagerService,
@@ -51,6 +53,7 @@ namespace Pharmacy_API.Controllers
             _appSettings = appSettings.Value;
             _signInManager = signInManager;
             _userManager = userManager;
+            _roleManager = roleManager;
             _jwtAuthManager = jwtAuthManager;
             _authManagerService = authManagerService;
             _distributedCache = distributedCache;
@@ -172,19 +175,38 @@ namespace Pharmacy_API.Controllers
 
             if (result.Succeeded)
             {
-                await _userManager.AddToRoleAsync(user, "Customer");
-                var claims = await _jwtAuthManager.GetUserClaims(user);
+                // ✅ Đảm bảo role Customer tồn tại
+                try
+                {
+                    if (!await _roleManager.RoleExistsAsync("Customer"))
+                    {
+                        await _roleManager.CreateAsync(new Role
+                        {
+                            Name = "Customer",
+                            DisplayName = "Khách hàng",
+                            NormalizedName = "CUSTOMER"
+                        });
+                        _logger.LogInformation("Customer role created");
+                    }
 
+                    await _userManager.AddToRoleAsync(user, "Customer");
+                    _logger.LogInformation($"Customer role assigned to {user.Email}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Failed to assign Customer role: {ex.Message}");
+                }
+
+                var claims = await _jwtAuthManager.GetUserClaims(user);
                 var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.UtcNow);
 
-                //save in db
                 await _userManager.SetAuthenticationTokenAsync(
                     user,
                     _appSettings.Jwt.AppName,
                     _appSettings.Jwt.RefreshTokenName,
                     jwtResult.RefreshToken);
 
-                var roles = await _userManager.GetRolesAsync(user);  // ✅ Lấy roles
+                var roles = await _userManager.GetRolesAsync(user);
                 await _authManagerService.SendOtpAsync(user.Email);
 
                 var loggedInUser = new
@@ -371,8 +393,25 @@ namespace Pharmacy_API.Controllers
                         result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
                 }
 
-                // ✅ TỰ ĐỘNG GÁN ROLE "Customer" CHO USER MỚI ĐĂNG KÝ QUA GOOGLE
-                await _userManager.AddToRoleAsync(user, "Customer");
+                // ✅ Gán role Customer cho user Google mới
+                try
+                {
+                    if (!await _roleManager.RoleExistsAsync("Customer"))
+                    {
+                        await _roleManager.CreateAsync(new Role
+                        {
+                            Name = "Customer",
+                            DisplayName = "Khách hàng",
+                            NormalizedName = "CUSTOMER"
+                        });
+                    }
+                    await _userManager.AddToRoleAsync(user, "Customer");
+                    _logger.LogInformation($"Customer role assigned to Google user {user.Email}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Failed to assign Customer role in Google login: {ex.Message}");
+                }
             }
 
             // Tạo token

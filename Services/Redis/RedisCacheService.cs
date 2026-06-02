@@ -33,7 +33,6 @@ namespace Pharmacy_API.Services.Redis
         {
             try
             {
-                // ✅ Dùng relative URL vì đã có BaseAddress
                 var response = await _httpClient.GetAsync($"/get/{key}", token);
 
                 if (response.IsSuccessStatusCode)
@@ -41,9 +40,27 @@ namespace Pharmacy_API.Services.Redis
                     var json = await response.Content.ReadAsStringAsync();
                     var result = JsonDocument.Parse(json);
                     var data = result.RootElement.GetProperty("result").GetString();
-                    return data != null ? Encoding.UTF8.GetBytes(data) : null;
+
+                    if (!string.IsNullOrEmpty(data))
+                    {
+                        // ✅ Parse JSON {"value":"..."} để lấy token thật
+                        if (data.StartsWith("{"))
+                        {
+                            try
+                            {
+                                var inner = JsonDocument.Parse(data);
+                                if (inner.RootElement.TryGetProperty("value", out var valueProp))
+                                {
+                                    data = valueProp.GetString();
+                                }
+                            }
+                            catch { }
+                        }
+
+                        return Encoding.UTF8.GetBytes(data ?? "");
+                    }
+                    return null;
                 }
-                _logger.LogWarning($"Redis GET {key}: {response.StatusCode}");
                 return null;
             }
             catch (Exception ex)
