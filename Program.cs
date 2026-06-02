@@ -386,6 +386,18 @@ try
     var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
     var uploadsPath = Path.Combine(wwwrootPath, "uploads");
 
+    // ✅ Đảm bảo thư mục wwwroot tồn tại trước
+    if (!Directory.Exists(wwwrootPath))
+    {
+        Directory.CreateDirectory(wwwrootPath);
+    }
+
+    // ✅ Đảm bảo thư mục uploads tồn tại
+    if (!Directory.Exists(uploadsPath))
+    {
+        Directory.CreateDirectory(uploadsPath);
+    }
+
     // Brands
     var brandsPath = Path.Combine(uploadsPath, "brands");
     if (!Directory.Exists(brandsPath)) Directory.CreateDirectory(brandsPath);
@@ -421,6 +433,9 @@ try
 }
 catch (Exception ex)
 {
+    // ✅ Log lỗi chi tiết hơn
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Failed to configure static file providers. ContentRootPath: {Path}", app.Environment.ContentRootPath);
     Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
 }
 
