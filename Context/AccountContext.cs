@@ -4,6 +4,7 @@ using Pharmacy_API.Models.Account;
 using Pharmacy_API.Models.Brand;
 using Pharmacy_API.Models.Category;
 using Pharmacy_API.Models.Country;
+using Pharmacy_API.Models.Payment;
 using Pharmacy_API.Models.Product;
 using Pharmacy_API.Models.Unit;
 using Pharmacy_API.Supports;
@@ -20,7 +21,7 @@ namespace Pharmacy_API.Context
         public virtual DbSet<RolePolicy> RolePolicies { get; set; }
         public virtual DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
         public virtual DbSet<UserOtp> UserOtps { get; set; }
-
+        public virtual DbSet<Payment> Payments { get; set; }
         public virtual DbSet<Product> Products { get; set; }
         public virtual DbSet<Category> Categories { get; set; }
         public virtual DbSet<Brand> Brands { get; set; }
