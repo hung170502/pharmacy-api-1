@@ -103,16 +103,47 @@ namespace Pharmacy_API.Services.Product
             var existingProduct = await _context.Products.FindAsync(id);
             if (existingProduct == null) return null;
 
-            _mapper.Map(requestDto, existingProduct);
+            // ✅ Chỉ update các field có giá trị hợp lệ (bỏ qua 0 và null)
+            if (!string.IsNullOrEmpty(requestDto.ProductName))
+                existingProduct.ProductName = requestDto.ProductName;
 
-            // ✅ Giữ nguyên ProductCode cũ khi update (không thay đổi)
-            // Nếu client gửi ProductCode mới thì sẽ được map tự động
-
-            existingProduct.ActiveFrom = requestDto.ActiveFrom;
+            existingProduct.NameAlias = requestDto.NameAlias;
+            existingProduct.Price = requestDto.Price;
+            existingProduct.Sale = requestDto.Sale;
+            existingProduct.Images = requestDto.Images;
+            existingProduct.Description = requestDto.Description;
+            existingProduct.SortDescription = requestDto.SortDescription;
+            existingProduct.DosageForm = requestDto.DosageForm;
+            existingProduct.Packaging = requestDto.Packaging;
+            existingProduct.Ingredients = requestDto.Ingredients;
+            existingProduct.Usage = requestDto.Usage;
+            existingProduct.DosageAndAdministration = requestDto.DosageAndAdministration;
+            existingProduct.SideEffects = requestDto.SideEffects;
+            existingProduct.Precautions = requestDto.Precautions;
+            existingProduct.Storage = requestDto.Storage;
+            existingProduct.Sort = requestDto.Sort;
+            existingProduct.StockStatus = requestDto.StockStatus;
             existingProduct.IsActive = requestDto.IsActive;
+            existingProduct.ActiveFrom = requestDto.ActiveFrom;
+            existingProduct.ProductionDate = requestDto.ProductionDate;
+
+            // ✅ Chỉ update FK nếu > 0
+            if (requestDto.CategoryId > 0)
+                existingProduct.CategoryId = requestDto.CategoryId;
+
+            if (requestDto.BrandId > 0)
+                existingProduct.BrandId = requestDto.BrandId;
+
+            if (requestDto.UnitId > 0)
+                existingProduct.UnitId = requestDto.UnitId;
+
+            if (requestDto.BrandOriginId > 0)
+                existingProduct.BrandOriginId = requestDto.BrandOriginId;
+
+            if (requestDto.ManufacturerId > 0)
+                existingProduct.ManufacturerId = requestDto.ManufacturerId;
 
             await _context.SaveChangesAsync();
-
             return _mapper.Map<ProductDto>(existingProduct);
         }
 
