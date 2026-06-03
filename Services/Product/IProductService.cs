@@ -6,7 +6,7 @@ namespace Pharmacy_API.Services.Product
 {
     public interface IProductService
     {
-        Task<PagedDto<Models.Product.Product>> GetListProductsAsync(ProductFilterDto filterDto);
+        Task<PagedDto<ProductDto>> GetListProductsAsync(ProductFilterDto filterDto);  // ✅ Đổi từ Models.Product.Product sang ProductDto
         Task<ProductDto> GetProductByIdAsync(int id);
         Task<ProductDto> CreateProductAsync(ProductRequestDto requestDto);
         Task<ProductDto> UpdateProductAsync(int id, ProductRequestDto requestDto);

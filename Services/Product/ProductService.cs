@@ -18,13 +18,10 @@ namespace Pharmacy_API.Services.Product
             _mapper = mapper;
         }
 
-        public async Task<PagedDto<Models.Product.Product>> GetListProductsAsync(ProductFilterDto filterDto)
+        public async Task<PagedDto<ProductDto>> GetListProductsAsync(ProductFilterDto filterDto)
         {
             var query = _context.Products
-                .Include(p => p.Brand)
-                .Include(p => p.Category)
-                .Include(p => p.Country)
-                .Include(p => p.Unit)
+                .AsNoTracking()
                 .AsQueryable();
 
             // Áp dụng filter
@@ -60,11 +57,47 @@ namespace Pharmacy_API.Services.Product
             var totalCount = await query.CountAsync();
 
             var products = await query
+                .OrderByDescending(p => p.ProductId)
                 .Skip((filterDto.Page - 1) * filterDto.PageSize)
                 .Take(filterDto.PageSize)
+                .Select(p => new ProductDto
+                {
+                    ProductId = p.ProductId,
+                    ProductCode = p.ProductCode,
+                    ProductName = p.ProductName,
+                    Price = p.Price,
+                    Sale = p.Sale,
+                    Images = p.Images,
+                    Description = p.Description,
+                    NameAlias = p.NameAlias,
+                    ProductionDate = p.ProductionDate,
+                    SortDescription = p.SortDescription,
+                    DosageForm = p.DosageForm,
+                    Packaging = p.Packaging,
+                    Ingredients = p.Ingredients,
+                    Usage = p.Usage,
+                    DosageAndAdministration = p.DosageAndAdministration,
+                    SideEffects = p.SideEffects,
+                    Precautions = p.Precautions,
+                    Storage = p.Storage,
+                    StockStatus = p.StockStatus.ToString(),
+                    IsActive = p.IsActive,
+                    ActiveFrom = p.ActiveFrom,
+                    CategoryId = p.CategoryId,
+                    BrandId = p.BrandId,
+                    UnitId = p.UnitId,
+                    BrandOriginId = p.BrandOriginId,
+                    ManufacturerId = p.ManufacturerId,
+                    // Lấy tên qua navigation (vẫn JOIN nhưng chỉ select field cần)
+                    Category = p.Category.CategoryName ?? "",
+                    Brand = p.Brand.BrandName ?? "",
+                    Unit = p.Unit.UnitName ?? "",
+                    BrandOrigin = p.Country.CountryName ?? "",
+                    Manufacturer = p.Manufacturer.CountryName ?? "",
+                })
                 .ToListAsync();
 
-            return new PagedDto<Models.Product.Product>(totalCount, products);
+            return new PagedDto<ProductDto>(totalCount, products);
         }
 
         public async Task<ProductDto> GetProductByIdAsync(int id)
@@ -76,7 +109,48 @@ namespace Pharmacy_API.Services.Product
                 .Include(p => p.Unit)
                 .FirstOrDefaultAsync(p => p.ProductId == id);
 
-            return product == null ? null : _mapper.Map<ProductDto>(product);
+            if (product == null) return null;
+
+            // ✅ Trả về DTO có cả ID và Name
+            return new ProductDto
+            {
+                ProductId = product.ProductId,
+                ProductCode = product.ProductCode,
+                ProductName = product.ProductName,
+                Price = product.Price,
+                Sale = product.Sale,
+                Images = product.Images,
+                Description = product.Description,
+                NameAlias = product.NameAlias,
+                ProductionDate = product.ProductionDate,
+                SortDescription = product.SortDescription,
+                DosageForm = product.DosageForm,
+                Packaging = product.Packaging,
+                Ingredients = product.Ingredients,
+                Usage = product.Usage,
+                DosageAndAdministration = product.DosageAndAdministration,
+                SideEffects = product.SideEffects,
+                Precautions = product.Precautions,
+                Storage = product.Storage,
+                Sort = product.Sort,
+                IsActive = product.IsActive,
+                ActiveFrom = product.ActiveFrom,
+                StockStatus = product.StockStatus.ToString(),
+
+                // ✅ Thêm cả ID
+                CategoryId = product.CategoryId,
+                BrandId = product.BrandId,
+                UnitId = product.UnitId,
+                BrandOriginId = product.BrandOriginId,
+                ManufacturerId = product.ManufacturerId,
+
+                // Navigation properties → string
+                Category = product.Category?.CategoryName ?? "",
+                Brand = product.Brand?.BrandName ?? "",
+                Unit = product.Unit?.UnitName ?? "",
+                BrandOrigin = product.Country?.CountryName ?? "",
+                Manufacturer = product.Manufacturer?.CountryName ?? ""
+            };
         }
 
         public async Task<ProductDto> CreateProductAsync(ProductRequestDto requestDto)
