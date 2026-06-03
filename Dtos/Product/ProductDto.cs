@@ -13,14 +13,24 @@ namespace Pharmacy_API.Dtos.Product
         public string? NameAlias { get; set; }
         public DateTime ProductionDate { get; set; }
         public double Sale { get; set; }
+
+        // ✅ Thêm ID
+        public int CategoryId { get; set; }
+        public int BrandId { get; set; }
+        public int UnitId { get; set; }
+        public int BrandOriginId { get; set; }
+        public int ManufacturerId { get; set; }
+
+        // Navigation properties (string)
         public string Category { get; set; } = string.Empty;
         public string Brand { get; set; } = string.Empty;
         public string Unit { get; set; } = string.Empty;
+        public string BrandOrigin { get; set; } = string.Empty;
+        public string Manufacturer { get; set; } = string.Empty;
+
         public string? SortDescription { get; set; }
         public string? DosageForm { get; set; }
         public string? Packaging { get; set; }
-        public string BrandOrigin { get; set; } = string.Empty;
-        public string Manufacturer { get; set; } = string.Empty;
         public string? Ingredients { get; set; }
         public string? Usage { get; set; }
         public string DosageAndAdministration { get; set; } = string.Empty;
@@ -28,7 +38,7 @@ namespace Pharmacy_API.Dtos.Product
         public string Precautions { get; set; } = string.Empty;
         public string Storage { get; set; } = string.Empty;
         public string? Sort { get; set; }
-        public string StockStatus { get; set; } = "InStock"; // Trả về string cho client
+        public string StockStatus { get; set; } = "InStock";
         public bool IsActive { get; set; }
         public DateTime? ActiveFrom { get; set; }
     }
