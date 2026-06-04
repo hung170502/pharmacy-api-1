@@ -9,7 +9,6 @@ namespace Pharmacy_API.Controllers
 {
     [Route("api/Catalog/[controller]")]
     [ApiController]
-    [Authorize]
     public class CategoryController : ApiControllerBase
     {
         private readonly ICategoryService _categoryService;
@@ -72,7 +71,6 @@ namespace Pharmacy_API.Controllers
         [HttpDelete("{id}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<int>> Delete(int id)
@@ -97,7 +95,7 @@ namespace Pharmacy_API.Controllers
 
         #region Get Category
         [HttpGet("{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -117,9 +115,8 @@ namespace Pharmacy_API.Controllers
 
         #region Get List Categories
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<PagedDto<CategoryDto>>> GetList([FromQuery] CategoryFilterDto filterDto)
         {
