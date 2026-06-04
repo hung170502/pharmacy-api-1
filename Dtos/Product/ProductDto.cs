@@ -7,12 +7,12 @@ namespace Pharmacy_API.Dtos.Product
         public int ProductId { get; set; }
         public string? ProductCode { get; set; }
         public string? ProductName { get; set; }
-        public double Price { get; set; }
+        public decimal Price { get; set; }           // ✅ double → decimal
         public string? Images { get; set; }
         public string? Description { get; set; }
         public string? NameAlias { get; set; }
         public DateTime ProductionDate { get; set; }
-        public double Sale { get; set; }
+        public decimal Sale { get; set; }            // ✅ double → decimal
 
         // ✅ Thêm ID
         public int CategoryId { get; set; }

@@ -12,8 +12,9 @@
         public int? BrandOriginId { get; set; } // Lọc theo xuất xứ (đổi từ CountryId)
         public int? UnitId { get; set; } // Lọc theo đơn vị
 
-        public double? MinPrice { get; set; } // Giá từ
-        public double? MaxPrice { get; set; } // Giá đến
+        // ✅ Sửa double? → decimal?
+        public decimal? MinPrice { get; set; }
+        public decimal? MaxPrice { get; set; }
 
         public StockStatus? StockStatus { get; set; } // Lọc theo trạng thái tồn kho (Còn hàng/Hết hàng)
     }

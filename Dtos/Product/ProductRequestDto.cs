@@ -13,8 +13,9 @@ namespace Pharmacy_API.Dtos.Product
         [StringLength(350)]
         public string ProductName { get; set; } = string.Empty;
 
-        [Range(0, double.MaxValue)]
-        public double Price { get; set; }
+        // ✅ Sửa: double → decimal
+        [Range(0, (double)decimal.MaxValue)]
+        public decimal Price { get; set; }
 
         public string? Images { get; set; }
 
@@ -26,8 +27,9 @@ namespace Pharmacy_API.Dtos.Product
 
         public DateTime ProductionDate { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public double Sale { get; set; }
+        // ✅ Sửa: double → decimal
+        [Range(0, (double)decimal.MaxValue)]
+        public decimal Sale { get; set; }
 
         public int CategoryId { get; set; }
         public int BrandId { get; set; }
@@ -42,7 +44,7 @@ namespace Pharmacy_API.Dtos.Product
         [StringLength(350)]
         public string? Packaging { get; set; }
 
-        [JsonPropertyName("countryId")] // Hỗ trợ client gửi field "countryId"
+        [JsonPropertyName("countryId")]
         public int BrandOriginId { get; set; }
 
         public int ManufacturerId { get; set; }

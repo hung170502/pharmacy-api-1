@@ -23,12 +23,13 @@ namespace Pharmacy_API.Models.Product
         [StringLength(350)]
         public string? ProductName { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public double Price { get; set; }
+        // ✅ ĐÃ SỬA: double → decimal, dùng cho PostgreSQL
+        [Range(0, (double)decimal.MaxValue)]
+        [Column(TypeName = "numeric(18,2)")]
+        public decimal Price { get; set; }
 
         public string? Images { get; set; }
 
-        // ✅ Tăng cho CKEditor (có thể chứa ảnh)
         [StringLength(50000)]
         public string? Description { get; set; }
 
@@ -37,8 +38,10 @@ namespace Pharmacy_API.Models.Product
 
         public DateTime ProductionDate { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public double Sale { get; set; }
+        // ✅ ĐÃ SỬA: double → decimal
+        [Range(0, (double)decimal.MaxValue)]
+        [Column(TypeName = "numeric(18,2)")]
+        public decimal Sale { get; set; }
 
         public int CategoryId { get; set; }
         public Category.Category? Category { get; set; }
@@ -49,7 +52,6 @@ namespace Pharmacy_API.Models.Product
         public int UnitId { get; set; }
         public Unit.Unit? Unit { get; set; }
 
-        // ✅ Tăng cho CKEditor
         [StringLength(10000)]
         public string? SortDescription { get; set; }
 
@@ -65,27 +67,21 @@ namespace Pharmacy_API.Models.Product
         public int ManufacturerId { get; set; }
         public Country.Country? Manufacturer { get; set; }
 
-        // ✅ Tăng cho CKEditor
         [StringLength(20000)]
         public string? Ingredients { get; set; }
 
-        // ✅ Tăng cho CKEditor
         [StringLength(20000)]
         public string? Usage { get; set; }
 
-        // ✅ Tăng cho CKEditor
         [StringLength(20000)]
         public string DosageAndAdministration { get; set; } = string.Empty;
 
-        // ✅ Tăng cho CKEditor
         [StringLength(10000)]
         public string SideEffects { get; set; } = string.Empty;
 
-        // ✅ Tăng cho CKEditor
         [StringLength(10000)]
         public string Precautions { get; set; } = string.Empty;
 
-        // ✅ Tăng cho CKEditor
         [StringLength(5000)]
         public string Storage { get; set; } = string.Empty;
 
