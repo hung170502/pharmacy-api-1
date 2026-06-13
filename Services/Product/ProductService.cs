@@ -232,7 +232,7 @@ namespace Pharmacy_API.Services.Product
             return true;
         }
 
-        /// <summary>
+        /// <summary> 
         /// Tự động sinh mã sản phẩm ngẫu nhiên 8 ký tự (chữ hoa + số), không trùng lặp
         /// </summary>
         private async Task<string> GenerateProductCodeAsync()

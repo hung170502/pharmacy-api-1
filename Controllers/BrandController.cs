@@ -113,7 +113,6 @@ namespace Pharmacy_API.Controllers
 
         #region Get List Brands
         [HttpGet]
-        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
