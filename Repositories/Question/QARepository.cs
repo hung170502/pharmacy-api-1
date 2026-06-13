@@ -9,9 +9,9 @@ namespace Pharmacy_API.Repositories
 {
     public class QARepository : IQARepository
     {
-        private readonly AppDbContext _db; // thay AppDbContext bằng tên DbContext thật của bạn
+        private readonly AccountContext _db;  // ← Đổi thành AccountContext
 
-        public QARepository(AppDbContext db)
+        public QARepository(AccountContext db)
         {
             _db = db;
         }

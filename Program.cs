@@ -41,9 +41,7 @@ string connectionString = builder.Configuration.GetConnectionString("DefaultConn
 
 builder.Services.AddDbContext<AccountContext>(options =>
     options.UseNpgsql(connectionString));
-// THÊM dòng này
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+
 
 using var scope = builder.Services.BuildServiceProvider().CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AccountContext>();
