@@ -32,6 +32,11 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.StaticFiles;  // Thêm dòng này
 using Pharmacy_API.Services.Redis;
 using Microsoft.Extensions.Caching.Distributed;
+using Pharmacy_API.Repositories.Question;
+using Pharmacy_API.Services.Question;
+using Pharmacy_API.MapperProfiles.Question;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();

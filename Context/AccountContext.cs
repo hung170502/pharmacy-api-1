@@ -8,6 +8,7 @@ using Pharmacy_API.Models.Order;
 using Pharmacy_API.Models.Payment;
 using Pharmacy_API.Models.Product;
 using Pharmacy_API.Models.Unit;
+using Pharmacy_API.Models.Question;  // Thêm dòng này
 using Pharmacy_API.Supports;
 
 namespace Pharmacy_API.Context
@@ -30,6 +31,10 @@ namespace Pharmacy_API.Context
         public virtual DbSet<Brand> Brands { get; set; }
         public virtual DbSet<Country> Countries { get; set; }
         public virtual DbSet<Unit> Units { get; set; }
+
+        // Q&A DbSets - Thêm mới
+        public virtual DbSet<ProductQuestion> ProductQuestions { get; set; }
+        public virtual DbSet<ProductAnswer> ProductAnswers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -145,6 +150,51 @@ namespace Pharmacy_API.Context
                       .WithOne()
                       .HasForeignKey(c => c.ParentId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== Q&A Configurations - Thêm mới =====
+
+            // ProductQuestion Configuration
+            modelBuilder.Entity<ProductQuestion>(entity =>
+            {
+                entity.HasKey(e => e.QuestionId);
+
+                entity.Property(e => e.Content)
+                      .IsRequired()
+                      .HasMaxLength(500);
+
+                entity.Property(e => e.UserName)
+                      .HasMaxLength(200);
+
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.CreatedAt);
+            });
+
+            // ProductAnswer Configuration
+            modelBuilder.Entity<ProductAnswer>(entity =>
+            {
+                entity.HasKey(e => e.AnswerId);
+
+                entity.Property(e => e.Content)
+                      .IsRequired()
+                      .HasMaxLength(1000);
+
+                entity.Property(e => e.RespondentName)
+                      .HasMaxLength(200);
+
+                entity.Property(e => e.RespondentRole)
+                      .HasMaxLength(50)
+                      .HasDefaultValue("pharmacist");
+
+                entity.HasIndex(e => e.QuestionId);
+                entity.HasIndex(e => e.CreatedAt);
+
+                // Relationship: Question -> Answers (One-to-Many)
+                entity.HasOne(e => e.Question)
+                      .WithMany(q => q.Answers)
+                      .HasForeignKey(e => e.QuestionId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
