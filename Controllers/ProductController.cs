@@ -50,5 +50,11 @@ namespace Pharmacy_API.Controllers
             var success = await _productService.DeleteProductAsync(id);
             return success ? NoContent() : NotFound();
         }
+        [HttpGet("alias/{nameAlias}")]
+        public async Task<IActionResult> GetByAlias(string nameAlias)
+        {
+            var result = await _productService.GetProductByAliasAsync(nameAlias);
+            return result == null ? NotFound() : Ok(result);
+        }
     }
 }

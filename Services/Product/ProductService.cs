@@ -252,5 +252,54 @@ namespace Pharmacy_API.Services.Product
 
             return code;
         }
+
+
+        public async Task<ProductDto?> GetProductByAliasAsync(string nameAlias)
+        {
+            var product = await _context.Products
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
+                .Include(p => p.Country)
+                .Include(p => p.Unit)
+                .FirstOrDefaultAsync(p => p.NameAlias == nameAlias);
+
+            if (product == null) return null;
+
+            return new ProductDto
+            {
+                ProductId = product.ProductId,
+                ProductCode = product.ProductCode,
+                ProductName = product.ProductName,
+                Price = product.Price,
+                Sale = product.Sale,
+                Images = product.Images,
+                Description = product.Description,
+                NameAlias = product.NameAlias,
+                ProductionDate = product.ProductionDate,
+                SortDescription = product.SortDescription,
+                DosageForm = product.DosageForm,
+                Packaging = product.Packaging,
+                Ingredients = product.Ingredients,
+                Usage = product.Usage,
+                DosageAndAdministration = product.DosageAndAdministration,
+                SideEffects = product.SideEffects,
+                Precautions = product.Precautions,
+                Storage = product.Storage,
+                StockStatus = product.StockStatus.ToString(),
+                IsActive = product.IsActive,
+                ActiveFrom = product.ActiveFrom,
+                CategoryId = product.CategoryId,
+                BrandId = product.BrandId,
+                UnitId = product.UnitId,
+                BrandOriginId = product.BrandOriginId,
+                ManufacturerId = product.ManufacturerId,
+                Category = product.Category?.CategoryName ?? "",
+                CategoryAlias = product.Category?.CategoryAlias ?? "",
+                Brand = product.Brand?.BrandName ?? "",
+                Unit = product.Unit?.UnitName ?? "",
+                BrandOrigin = product.Country?.CountryName ?? "",
+                Manufacturer = product.Manufacturer?.CountryName ?? ""
+            };
+        }
     }
 }

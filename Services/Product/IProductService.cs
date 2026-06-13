@@ -10,6 +10,7 @@ namespace Pharmacy_API.Services.Product
         Task<ProductDto> GetProductByIdAsync(int id);
         Task<ProductDto> CreateProductAsync(ProductRequestDto requestDto);
         Task<ProductDto> UpdateProductAsync(int id, ProductRequestDto requestDto);
+        Task<ProductDto?> GetProductByAliasAsync(string nameAlias);
         Task<bool> DeleteProductAsync(int id);
     }
 }
