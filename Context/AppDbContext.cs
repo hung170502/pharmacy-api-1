@@ -18,9 +18,42 @@ namespace Pharmacy_API.Context
         public DbSet<ProductQuestion> ProductQuestions { get; set; }
         public DbSet<ProductAnswer> ProductAnswers { get; set; }
 
+        // Context/AppDbContext.cs
+        // Context/AppDbContext.cs
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure Product - THÊM TOÀN BỘ PHẦN NÀY
+            modelBuilder.Entity<Product>(entity =>
+            {
+                // Brand relationship
+                entity.HasOne(p => p.Brand)
+                      .WithMany()
+                      .HasForeignKey(p => p.BrandId);
+
+                // Category relationship
+                entity.HasOne(p => p.Category)
+                      .WithMany()
+                      .HasForeignKey(p => p.CategoryId);
+
+                // Unit relationship
+                entity.HasOne(p => p.Unit)
+                      .WithMany()
+                      .HasForeignKey(p => p.UnitId);
+
+                // BrandOrigin → Country
+                entity.HasOne(p => p.Country)
+                      .WithMany()
+                      .HasForeignKey(p => p.BrandOriginId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                // Manufacturer → Country
+                entity.HasOne(p => p.Manufacturer)
+                      .WithMany()
+                      .HasForeignKey(p => p.ManufacturerId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
 
             // Configure ProductQuestion
             modelBuilder.Entity<ProductQuestion>(entity =>
@@ -43,11 +76,10 @@ namespace Pharmacy_API.Context
                 entity.HasIndex(e => e.QuestionId);
                 entity.HasIndex(e => e.CreatedAt);
 
-                // Relationship
                 entity.HasOne(e => e.Question)
-                    .WithMany(q => q.Answers)
-                    .HasForeignKey(e => e.QuestionId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                      .WithMany(q => q.Answers)
+                      .HasForeignKey(e => e.QuestionId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
