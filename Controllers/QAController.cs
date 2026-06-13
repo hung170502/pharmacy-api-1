@@ -6,7 +6,7 @@ using Pharmacy_API.Services.Question;
 namespace Pharmacy_API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/QA")]
     public class QAController : ControllerBase
     {
         private readonly IQAService _qaService;

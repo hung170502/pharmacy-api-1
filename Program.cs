@@ -1,41 +1,34 @@
-﻿
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
+using System.IO.Compression;
+using System.Text;
+using System.Text.Json.Serialization;
 using Pharmacy_API.Context;
 using Pharmacy_API.MapperProfiles.Account;
+using Pharmacy_API.MapperProfiles.Question;
 using Pharmacy_API.Models.Account;
 using Pharmacy_API.Repositories.Account;
 using Pharmacy_API.Repositories.Brand;
 using Pharmacy_API.Repositories.Category;
 using Pharmacy_API.Repositories.Country;
 using Pharmacy_API.Repositories.Unit;
+using Pharmacy_API.Repositories.Question;
 using Pharmacy_API.Services.Account;
 using Pharmacy_API.Services.Brand;
 using Pharmacy_API.Services.Category;
 using Pharmacy_API.Services.Country;
 using Pharmacy_API.Services.Product;
 using Pharmacy_API.Services.Unit;
-using Pharmacy_API.Supports;
-using Resend;
-using System.IO.Compression;
-using System.Net;
-using System.Net.Mail;
-using System.Text;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.StaticFiles;  // Thêm dòng này
-using Pharmacy_API.Services.Redis;
-using Microsoft.Extensions.Caching.Distributed;
-using Pharmacy_API.Repositories.Question;
 using Pharmacy_API.Services.Question;
-using Pharmacy_API.MapperProfiles.Question;
-
+using Pharmacy_API.Services.Redis;
+using Pharmacy_API.Supports;
+using Microsoft.Extensions.Caching.Distributed;
+using Pharmacy_API.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,23 +102,22 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
-            // ✅ Hỗ trợ nhiều Issuer (Local + Render)
             ValidIssuers = new[]
-        {
-            jwtIssuer,                              // https://hongochung.onrender.com
-            "http://localhost:5188",
-            "http://127.0.0.1:5188",
-            "http://192.168.1.5:5188",
-            "https://localhost:5001",
-        },
+            {
+                jwtIssuer,
+                "http://localhost:5188",
+                "http://127.0.0.1:5188",
+                "http://192.168.1.5:5188",
+                "https://localhost:5001",
+            },
             ValidAudiences = new[]
-        {
-            jwtAudience,                            // https://hongochung.onrender.com
-            "http://localhost:5188",
-            "http://127.0.0.1:5188",
-            "http://192.168.1.5:5188",
-            "https://localhost:5001",
-        },
+            {
+                jwtAudience,
+                "http://localhost:5188",
+                "http://127.0.0.1:5188",
+                "http://192.168.1.5:5188",
+                "https://localhost:5001",
+            },
 
             IssuerSigningKey =
                 new SymmetricSecurityKey(
@@ -229,53 +221,14 @@ builder.Services.AddSwaggerGen(options =>
 
 #endregion
 
-//#region Email Config
-
-//void AddEmailConfig(IServiceCollection services, IConfiguration configuration)
-//{
-//    services.AddScoped<ISmtpClient>(provider =>
-//    {
-//        var port =
-//            configuration.GetValue<int>("MailSettings:Port", 587);
-
-//        var smtpClient = new SmtpClient(
-//            configuration["MailSettings:Host"],
-//            port
-//        )
-//        {
-//            UseDefaultCredentials = false,
-
-//            Credentials = new NetworkCredential(
-//                configuration["MailSettings:Mail"],
-//                configuration["MailSettings:Password"]
-//            ),
-
-//            EnableSsl =
-//                configuration.GetValue<bool>(
-//                    "MailSettings:EnableSsl",
-//                    true
-//                )
-//        };
-
-//        return new SmtpClientWrapper(smtpClient);
-//    });
-//}
-
-//AddEmailConfig(builder.Services, builder.Configuration);
-
-//#endregion
-
 #region Email Config - Brevo
 
-// Đăng ký HttpClient và EmailSenderService
 builder.Services.AddHttpClient<IEmailSenderService, EmailSenderService>();
 
 #endregion
 
-
 #region Seed Data Service
 
-// ✅ Thêm SeedDataService
 builder.Services.AddScoped<SeedDataService>();
 
 #endregion
@@ -297,6 +250,7 @@ builder.Services.AddResponseCompression(options =>
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 builder.Services.AddHttpClient();
+
 builder.Services.AddSingleton<IDistributedCache>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -304,14 +258,15 @@ builder.Services.AddSingleton<IDistributedCache>(sp =>
     var configuration = sp.GetRequiredService<IConfiguration>();
     var logger = sp.GetRequiredService<ILogger<RedisCacheService>>();
 
-    // ✅ Set BaseAddress
     httpClient.BaseAddress = new Uri(configuration["Upstash:RestUrl"] ?? "https://honest-bat-74659.upstash.io");
 
     return new RedisCacheService(httpClient, configuration, logger);
 });
 
+// AutoMapper - Thêm QuestionProfile
 builder.Services.AddAutoMapper(
-    typeof(AutoMapperProfile).Assembly
+    typeof(AutoMapperProfile).Assembly,
+    typeof(QuestionProfile).Assembly
 );
 
 #region Repositories
@@ -330,6 +285,9 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<ICountryRepository, CountryRepository>();
 builder.Services.AddScoped<IUnitRepository, UnitRepository>();
+
+// Q&A Repositories
+builder.Services.AddScoped<IQARepository, QARepository>();
 
 #endregion
 
@@ -352,6 +310,9 @@ builder.Services.AddScoped<ICountryService, CountryService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 
+// Q&A Services
+builder.Services.AddScoped<IQAService, QAService>();
+
 #endregion
 
 builder.Services
@@ -361,11 +322,9 @@ builder.Services
         options.JsonSerializerOptions.Converters
             .Add(new JsonStringEnumConverter());
 
-        // ✅ Fix lỗi object cycle JSON
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 
-        // ✅ (Tùy chọn) Bỏ qua field null cho response gọn hơn
         options.JsonSerializerOptions.DefaultIgnoreCondition =
             System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
@@ -373,14 +332,6 @@ builder.Services
 var app = builder.Build();
 
 #region Middleware
-
-//app.UseCors("AllowAll");
-
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
 
 app.UseCors("AllowAll");
 
@@ -391,6 +342,7 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Pharmacy API V1");
     c.RoutePrefix = "swagger";
 });
+
 app.UseStaticFiles();
 
 // Cấu hình phục vụ file upload cho Brands, Categories, Products
@@ -399,13 +351,11 @@ try
     var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
     var uploadsPath = Path.Combine(wwwrootPath, "uploads");
 
-    // ✅ Đảm bảo thư mục wwwroot tồn tại trước
     if (!Directory.Exists(wwwrootPath))
     {
         Directory.CreateDirectory(wwwrootPath);
     }
 
-    // ✅ Đảm bảo thư mục uploads tồn tại
     if (!Directory.Exists(uploadsPath))
     {
         Directory.CreateDirectory(uploadsPath);
@@ -446,7 +396,6 @@ try
 }
 catch (Exception ex)
 {
-    // ✅ Log lỗi chi tiết hơn
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     logger.LogError(ex, "Failed to configure static file providers. ContentRootPath: {Path}", app.Environment.ContentRootPath);
     Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
@@ -466,13 +415,11 @@ app.MapControllers();
 
 #endregion
 
-// ✅ Chạy Seed Data sau khi app khởi động
+// Chạy Seed Data sau khi app khởi động
 using (var seedScope = app.Services.CreateScope())
 {
     var seedService = seedScope.ServiceProvider.GetRequiredService<SeedDataService>();
     await seedService.SeedAsync();
 }
 
-
 app.Run();
-
