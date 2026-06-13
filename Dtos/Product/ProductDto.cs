@@ -23,6 +23,7 @@ namespace Pharmacy_API.Dtos.Product
 
         // Navigation properties (string)
         public string Category { get; set; } = string.Empty;
+        public string CategoryAlias { get; set; } = string.Empty;  // ← thêm dòng này
         public string Brand { get; set; } = string.Empty;
         public string Unit { get; set; } = string.Empty;
         public string BrandOrigin { get; set; } = string.Empty;

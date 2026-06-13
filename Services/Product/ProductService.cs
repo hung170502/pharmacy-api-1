@@ -90,6 +90,7 @@ namespace Pharmacy_API.Services.Product
                     ManufacturerId = p.ManufacturerId,
                     // Lấy tên qua navigation (vẫn JOIN nhưng chỉ select field cần)
                     Category = p.Category.CategoryName ?? "",
+                    CategoryAlias = p.Category.CategoryAlias ?? "",  // ← thêm
                     Brand = p.Brand.BrandName ?? "",
                     Unit = p.Unit.UnitName ?? "",
                     BrandOrigin = p.Country.CountryName ?? "",
@@ -146,6 +147,7 @@ namespace Pharmacy_API.Services.Product
 
                 // Navigation properties → string
                 Category = product.Category?.CategoryName ?? "",
+                CategoryAlias = product.Category?.CategoryAlias ?? "",  // ← thêm
                 Brand = product.Brand?.BrandName ?? "",
                 Unit = product.Unit?.UnitName ?? "",
                 BrandOrigin = product.Country?.CountryName ?? "",
