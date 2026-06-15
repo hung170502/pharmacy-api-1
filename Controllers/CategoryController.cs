@@ -18,9 +18,7 @@ namespace Pharmacy_API.Controllers
         {
             _categoryService = categoryService;
             _logger = logger;
-            _categoryService = categoryService;
         }
-
 
         #region Insert Category
         [HttpPost]
@@ -29,15 +27,14 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<CategoryDto?>> Insert([FromBody] CategoryRequestDto categoryRequestDto)
+        public async Task<ActionResult<CategoryDto?>> Insert([FromForm] CategoryRequestDto categoryRequestDto)
         {
-            CategoryDto? categoryDto = await _categoryService.InsertCategoryAsync(categoryRequestDto);
             categoryRequestDto.SetUserID(await GetUserID());
+            CategoryDto? categoryDto = await _categoryService.InsertCategoryAsync(categoryRequestDto);
 
             if (categoryDto != null)
             {
                 _logger.LogInformation("Insert Success");
-
                 return StatusCode(201, categoryDto);
             }
 
@@ -52,14 +49,13 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<int>> Update([FromBody] CategoryRequestDto categoryRequestDto, int id)
+        public async Task<ActionResult<int>> Update([FromForm] CategoryRequestDto categoryRequestDto, int id)
         {
             categoryRequestDto.SetUserID(await GetUserID());
             int total = await _categoryService.UpdateCategoryAsync(categoryRequestDto, id);
             if (total > 0)
             {
                 _logger.LogInformation("Update Success");
-
                 return Ok(total);
             }
 
@@ -67,7 +63,7 @@ namespace Pharmacy_API.Controllers
         }
         #endregion
 
-        #region Delete Permission
+        #region Delete Category
         [HttpDelete("{id}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -85,7 +81,6 @@ namespace Pharmacy_API.Controllers
             if (total > 0)
             {
                 _logger.LogInformation("Delete Success");
-
                 return Ok(total);
             }
 
@@ -111,7 +106,6 @@ namespace Pharmacy_API.Controllers
             return Ok(categoryDto);
         }
         #endregion
-
 
         #region Get List Categories
         [HttpGet]
