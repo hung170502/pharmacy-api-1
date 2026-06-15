@@ -27,10 +27,10 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<BrandDto?>> Insert([FromForm] BrandRequestDto brandRequestDto, IFormFile? image)
+        public async Task<ActionResult<BrandDto?>> Insert([FromForm] BrandRequestDto brandRequestDto)
         {
             brandRequestDto.SetUserID(await GetUserID());
-            BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto, image);
+            BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto, brandRequestDto.Image);
 
             if (brandDto != null)
             {
@@ -49,10 +49,10 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<int>> Update([FromForm] BrandRequestDto brandRequestDto, int id, IFormFile? image)
+        public async Task<ActionResult<int>> Update([FromForm] BrandRequestDto brandRequestDto, int id)
         {
             brandRequestDto.SetUserID(await GetUserID());
-            int total = await _brandService.UpdateBrandAsync(brandRequestDto, id, image);
+            int total = await _brandService.UpdateBrandAsync(brandRequestDto, id, brandRequestDto.Image);
             if (total > 0)
             {
                 _logger.LogInformation("Update Success");
