@@ -18,6 +18,7 @@ namespace Pharmacy_API.Models.Brand
         [StringLength(15)]
         public string? PhoneNumber { get; set; }
         public string? BrandImage { get; set; }
+        public string? ImagePublicId { get; set; }
 
         [StringLength(1000)]
         public string? Address { get; set; }

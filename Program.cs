@@ -29,7 +29,9 @@ using Pharmacy_API.Services.Redis;
 using Pharmacy_API.Supports;
 using Microsoft.Extensions.Caching.Distributed;
 using Pharmacy_API.Repositories;
-
+using Pharmacy_API.Services; // THÊM: để dùng CloudinaryService
+using Pharmacy_API.MapperProfiles.Account;
+using Pharmacy_API.MapperProfiles.Question;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -264,12 +266,7 @@ builder.Services.AddSingleton<IDistributedCache>(sp =>
     return new RedisCacheService(httpClient, configuration, logger);
 });
 
-// AutoMapper - Thêm QuestionProfile
-builder.Services.AddAutoMapper(
-    typeof(AutoMapperProfile).Assembly,
-    typeof(QuestionProfile).Assembly
-);
-
+builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 #region Repositories
 
 // Account
@@ -314,6 +311,9 @@ builder.Services.AddScoped<IProductService, ProductService>();
 // Q&A Services
 builder.Services.AddScoped<IQAService, QAService>();
 
+// Cloudinary Service - THÊM VÀO ĐÂY
+builder.Services.AddScoped<CloudinaryService>();
+
 #endregion
 
 builder.Services
@@ -344,63 +344,9 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+// ⚠️ BỎ TOÀN BỘ PHẦN CẤU HÌNH STATIC FILES CŨ (wwwroot/uploads)
+// Vì giờ ảnh đã được lưu trên Cloudinary, không cần local nữa
 app.UseStaticFiles();
-
-// Cấu hình phục vụ file upload cho Brands, Categories, Products
-try
-{
-    var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
-    var uploadsPath = Path.Combine(wwwrootPath, "uploads");
-
-    if (!Directory.Exists(wwwrootPath))
-    {
-        Directory.CreateDirectory(wwwrootPath);
-    }
-
-    if (!Directory.Exists(uploadsPath))
-    {
-        Directory.CreateDirectory(uploadsPath);
-    }
-
-    // Brands
-    var brandsPath = Path.Combine(uploadsPath, "brands");
-    if (!Directory.Exists(brandsPath)) Directory.CreateDirectory(brandsPath);
-
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(brandsPath),
-        RequestPath = "/uploads/brands",
-        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
-    });
-
-    // Categories
-    var categoriesPath = Path.Combine(uploadsPath, "categories");
-    if (!Directory.Exists(categoriesPath)) Directory.CreateDirectory(categoriesPath);
-
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(categoriesPath),
-        RequestPath = "/uploads/categories",
-        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
-    });
-
-    // Products
-    var productsPath = Path.Combine(uploadsPath, "products");
-    if (!Directory.Exists(productsPath)) Directory.CreateDirectory(productsPath);
-
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(productsPath),
-        RequestPath = "/uploads/products",
-        OnPrepareResponse = ctx => ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800")
-    });
-}
-catch (Exception ex)
-{
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "Failed to configure static file providers. ContentRootPath: {Path}", app.Environment.ContentRootPath);
-    Console.WriteLine($"Warning: Could not configure static files: {ex.Message}");
-}
 
 app.UseRouting();
 

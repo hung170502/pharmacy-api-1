@@ -27,15 +27,14 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<BrandDto?>> Insert([FromBody] BrandRequestDto brandRequestDto)
+        public async Task<ActionResult<BrandDto?>> Insert([FromForm] BrandRequestDto brandRequestDto, IFormFile? image)
         {
-            BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto);
             brandRequestDto.SetUserID(await GetUserID());
+            BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto, image);
 
-            if (brandRequestDto != null)
+            if (brandDto != null)
             {
                 _logger.LogInformation("Insert Success");
-
                 return StatusCode(201, brandDto);
             }
 
@@ -50,14 +49,13 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<int>> Update([FromBody] BrandRequestDto brandRequestDto, int id)
+        public async Task<ActionResult<int>> Update([FromForm] BrandRequestDto brandRequestDto, int id, IFormFile? image)
         {
             brandRequestDto.SetUserID(await GetUserID());
-            int total = await _brandService.UpdateBrandAsync(brandRequestDto, id);
+            int total = await _brandService.UpdateBrandAsync(brandRequestDto, id, image);
             if (total > 0)
             {
                 _logger.LogInformation("Update Success");
-
                 return Ok(total);
             }
 
@@ -84,7 +82,6 @@ namespace Pharmacy_API.Controllers
             if (total > 0)
             {
                 _logger.LogInformation("Delete Success");
-
                 return Ok(total);
             }
 

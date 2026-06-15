@@ -18,19 +18,22 @@ namespace Pharmacy_API.Services.Brand
         private readonly ILogger<BrandService> _logger;
         private readonly IMapper _mapper;
         private readonly IBrandRepository _brandRepository;
+        private readonly CloudinaryService _cloudinaryService;
 
         public BrandService(
             ILogger<BrandService> logger,
             IMapper mapper,
-            IBrandRepository brandRepository)
+            IBrandRepository brandRepository,
+            CloudinaryService cloudinaryService)
         {
             _logger = logger;
             _mapper = mapper;
             _brandRepository = brandRepository;
+            _cloudinaryService = cloudinaryService;
         }
 
         #region Insert Brand
-        public async Task<BrandDto?> InsertBrandAsync(BrandRequestDto requestDto)
+        public async Task<BrandDto?> InsertBrandAsync(BrandRequestDto requestDto, IFormFile? image)
         {
             _logger.LogInformation("Insert Brand");
 
@@ -38,10 +41,24 @@ namespace Pharmacy_API.Services.Brand
             brand.BrandName = requestDto.BrandName;
             brand.Email = requestDto.Email;
             brand.PhoneNumber = requestDto.PhoneNumber;
-            brand.BrandImage = requestDto.BrandImage;
             brand.Address = requestDto.Address;
             brand.Description = requestDto.Description;
             brand.Sort = requestDto.Sort;
+
+            if (image != null)
+            {
+                var uploadResult = await _cloudinaryService.UploadImageAsync(image, "brands");
+                if (uploadResult != null && uploadResult.Error == null)
+                {
+                    brand.BrandImage = uploadResult.SecureUrl.ToString();
+                    brand.ImagePublicId = uploadResult.PublicId;
+                    _logger.LogInformation($"Uploaded image: {brand.BrandImage}");
+                }
+                else
+                {
+                    _logger.LogError($"Upload failed: {uploadResult?.Error?.Message}");
+                }
+            }
 
             Pharmacy_API.Models.Brand.Brand? newBrand = await _brandRepository.InsertAsync(brand);
 
@@ -50,10 +67,9 @@ namespace Pharmacy_API.Services.Brand
         #endregion
 
         #region Update Brand
-        public async Task<int> UpdateBrandAsync(BrandRequestDto requestDto, int id)
+        public async Task<int> UpdateBrandAsync(BrandRequestDto requestDto, int id, IFormFile? image)
         {
             _logger.LogInformation("Update Brand");
-
 
             Pharmacy_API.Models.Brand.Brand? brand = await _brandRepository.GetByIdAsync(id);
             if (brand != null)
@@ -61,10 +77,26 @@ namespace Pharmacy_API.Services.Brand
                 brand.BrandName = requestDto.BrandName;
                 brand.Email = requestDto.Email;
                 brand.PhoneNumber = requestDto.PhoneNumber;
-                brand.BrandImage = requestDto.BrandImage;
                 brand.Address = requestDto.Address;
                 brand.Description = requestDto.Description;
                 brand.Sort = requestDto.Sort;
+
+                if (image != null)
+                {
+                    if (!string.IsNullOrEmpty(brand.ImagePublicId))
+                    {
+                        bool deleted = await _cloudinaryService.DeleteImageAsync(brand.ImagePublicId);
+                        _logger.LogInformation($"Deleted old image: {deleted}");
+                    }
+
+                    var uploadResult = await _cloudinaryService.UploadImageAsync(image, "brands");
+                    if (uploadResult != null && uploadResult.Error == null)
+                    {
+                        brand.BrandImage = uploadResult.SecureUrl.ToString();
+                        brand.ImagePublicId = uploadResult.PublicId;
+                        _logger.LogInformation($"Uploaded new image: {brand.BrandImage}");
+                    }
+                }
 
                 return await _brandRepository.UpdateAsync(brand);
             }
@@ -78,16 +110,21 @@ namespace Pharmacy_API.Services.Brand
         {
             _logger.LogInformation("Delete Brand");
 
+            Pharmacy_API.Models.Brand.Brand? brand = await _brandRepository.GetByIdAsync(id);
+            if (brand != null && !string.IsNullOrEmpty(brand.ImagePublicId))
+            {
+                bool deleted = await _cloudinaryService.DeleteImageAsync(brand.ImagePublicId);
+                _logger.LogInformation($"Deleted image: {deleted}");
+            }
+
             return await _brandRepository.DeleteAsync(id);
         }
         #endregion
-
 
         #region Get Brand
         public async Task<BrandDto?> GetBrandAsync(int id, bool isDeep = false)
         {
             _logger.LogInformation("Get Brand");
-
 
             Pharmacy_API.Models.Brand.Brand? brand = await _brandRepository.GetByIdAsync(id, isDeep);
             if (brand != null)
