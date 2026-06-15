@@ -13,9 +13,6 @@ namespace Pharmacy_API.Models.Product
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int ProductId { get; set; }
 
-        /// <summary>
-        /// Mã sản phẩm (vd: P01045)
-        /// </summary>
         [StringLength(50)]
         public string? ProductCode { get; set; }
 
@@ -23,12 +20,15 @@ namespace Pharmacy_API.Models.Product
         [StringLength(350)]
         public string? ProductName { get; set; }
 
-        // ✅ ĐÃ SỬA: double → decimal, dùng cho PostgreSQL
         [Range(0, (double)decimal.MaxValue)]
         [Column(TypeName = "numeric(18,2)")]
         public decimal Price { get; set; }
 
+        // URL ảnh, cách nhau bằng ;
         public string? Images { get; set; }
+
+        // THÊM: PublicId để xóa ảnh trên Cloudinary, cách nhau bằng ;
+        public string? ImagePublicIds { get; set; }
 
         [StringLength(50000)]
         public string? Description { get; set; }
@@ -38,7 +38,6 @@ namespace Pharmacy_API.Models.Product
 
         public DateTime ProductionDate { get; set; }
 
-        // ✅ ĐÃ SỬA: double → decimal
         [Range(0, (double)decimal.MaxValue)]
         [Column(TypeName = "numeric(18,2)")]
         public decimal Sale { get; set; }
@@ -89,6 +88,10 @@ namespace Pharmacy_API.Models.Product
 
         [NotMapped]
         public IFormFile? ImageFile { get; set; }
+
+        // THÊM: Nhận nhiều file upload, không map vào DB
+        [NotMapped]
+        public List<IFormFile>? ImageFiles { get; set; }
 
         public StockStatus StockStatus { get; set; } = StockStatus.InStock;
 

@@ -11,20 +11,19 @@ namespace Pharmacy_API.Services.Product
     {
         private readonly AccountContext _context;
         private readonly IMapper _mapper;
+        private readonly CloudinaryService _cloudinaryService; // THÊM
 
-        public ProductService(AccountContext context, IMapper mapper)
+        public ProductService(AccountContext context, IMapper mapper, CloudinaryService cloudinaryService)
         {
             _context = context;
             _mapper = mapper;
+            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<PagedDto<ProductDto>> GetListProductsAsync(ProductFilterDto filterDto)
         {
-            var query = _context.Products
-                .AsNoTracking()
-                .AsQueryable();
+            var query = _context.Products.AsNoTracking().AsQueryable();
 
-            // Áp dụng filter
             if (!string.IsNullOrEmpty(filterDto.Keyword))
             {
                 var keyword = filterDto.Keyword.ToLower();
@@ -35,22 +34,16 @@ namespace Pharmacy_API.Services.Product
 
             if (filterDto.CategoryId.HasValue)
                 query = query.Where(p => p.CategoryId == filterDto.CategoryId.Value);
-
             if (filterDto.BrandId.HasValue)
                 query = query.Where(p => p.BrandId == filterDto.BrandId.Value);
-
             if (filterDto.BrandOriginId.HasValue)
                 query = query.Where(p => p.BrandOriginId == filterDto.BrandOriginId.Value);
-
             if (filterDto.UnitId.HasValue)
                 query = query.Where(p => p.UnitId == filterDto.UnitId.Value);
-
             if (filterDto.MinPrice.HasValue)
                 query = query.Where(p => p.Price >= filterDto.MinPrice.Value);
-
             if (filterDto.MaxPrice.HasValue)
                 query = query.Where(p => p.Price <= filterDto.MaxPrice.Value);
-
             if (filterDto.StockStatus.HasValue)
                 query = query.Where(p => p.StockStatus == filterDto.StockStatus.Value);
 
@@ -88,9 +81,8 @@ namespace Pharmacy_API.Services.Product
                     UnitId = p.UnitId,
                     BrandOriginId = p.BrandOriginId,
                     ManufacturerId = p.ManufacturerId,
-                    // Lấy tên qua navigation (vẫn JOIN nhưng chỉ select field cần)
                     Category = p.Category.CategoryName ?? "",
-                    CategoryAlias = p.Category.CategoryAlias ?? "",  // ← thêm
+                    CategoryAlias = p.Category.CategoryAlias ?? "",
                     Brand = p.Brand.BrandName ?? "",
                     Unit = p.Unit.UnitName ?? "",
                     BrandOrigin = p.Country.CountryName ?? "",
@@ -112,7 +104,6 @@ namespace Pharmacy_API.Services.Product
 
             if (product == null) return null;
 
-            // ✅ Trả về DTO có cả ID và Name
             return new ProductDto
             {
                 ProductId = product.ProductId,
@@ -137,17 +128,13 @@ namespace Pharmacy_API.Services.Product
                 IsActive = product.IsActive,
                 ActiveFrom = product.ActiveFrom,
                 StockStatus = product.StockStatus.ToString(),
-
-                // ✅ Thêm cả ID
                 CategoryId = product.CategoryId,
                 BrandId = product.BrandId,
                 UnitId = product.UnitId,
                 BrandOriginId = product.BrandOriginId,
                 ManufacturerId = product.ManufacturerId,
-
-                // Navigation properties → string
                 Category = product.Category?.CategoryName ?? "",
-                CategoryAlias = product.Category?.CategoryAlias ?? "",  // ← thêm
+                CategoryAlias = product.Category?.CategoryAlias ?? "",
                 Brand = product.Brand?.BrandName ?? "",
                 Unit = product.Unit?.UnitName ?? "",
                 BrandOrigin = product.Country?.CountryName ?? "",
@@ -155,15 +142,51 @@ namespace Pharmacy_API.Services.Product
             };
         }
 
+        // THÊM: Helper upload nhiều ảnh
+        private async Task<(string? urls, string? publicIds)> UploadImagesAsync(List<IFormFile>? files)
+        {
+            if (files == null || files.Count == 0)
+                return (null, null);
+
+            var urls = new List<string>();
+            var publicIds = new List<string>();
+
+            foreach (var file in files)
+            {
+                var result = await _cloudinaryService.UploadImageAsync(file, "products");
+                if (result?.Error == null)
+                {
+                    urls.Add(result.SecureUrl.ToString());
+                    publicIds.Add(result.PublicId);
+                }
+            }
+
+            return (string.Join(";", urls), string.Join(";", publicIds));
+        }
+
+        // THÊM: Helper xóa nhiều ảnh
+        private async Task DeleteImagesAsync(string? publicIds)
+        {
+            if (string.IsNullOrEmpty(publicIds)) return;
+
+            var ids = publicIds.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var id in ids)
+            {
+                await _cloudinaryService.DeleteImageAsync(id.Trim());
+            }
+        }
+
         public async Task<ProductDto> CreateProductAsync(ProductRequestDto requestDto)
         {
-            var product = _mapper.Map<Models.Product.Product>(requestDto);
+            // Upload ảnh lên Cloudinary
+            var (urls, publicIds) = await UploadImagesAsync(requestDto.ImageFiles);
 
-            // ✅ Tự động sinh ProductCode nếu chưa có
+            var product = _mapper.Map<Models.Product.Product>(requestDto);
+            product.Images = urls ?? requestDto.Images;
+            product.ImagePublicIds = publicIds;
+
             if (string.IsNullOrEmpty(product.ProductCode))
-            {
                 product.ProductCode = await GenerateProductCodeAsync();
-            }
 
             product.ActiveFrom = requestDto.ActiveFrom;
             product.IsActive = requestDto.IsActive;
@@ -179,14 +202,21 @@ namespace Pharmacy_API.Services.Product
             var existingProduct = await _context.Products.FindAsync(id);
             if (existingProduct == null) return null;
 
-            // ✅ Chỉ update các field có giá trị hợp lệ (bỏ qua 0 và null)
+            // Nếu có ảnh mới, xóa ảnh cũ rồi upload ảnh mới
+            if (requestDto.ImageFiles != null && requestDto.ImageFiles.Count > 0)
+            {
+                await DeleteImagesAsync(existingProduct.ImagePublicIds);
+                var (urls, publicIds) = await UploadImagesAsync(requestDto.ImageFiles);
+                existingProduct.Images = urls;
+                existingProduct.ImagePublicIds = publicIds;
+            }
+
             if (!string.IsNullOrEmpty(requestDto.ProductName))
                 existingProduct.ProductName = requestDto.ProductName;
 
             existingProduct.NameAlias = requestDto.NameAlias;
             existingProduct.Price = requestDto.Price;
             existingProduct.Sale = requestDto.Sale;
-            existingProduct.Images = requestDto.Images;
             existingProduct.Description = requestDto.Description;
             existingProduct.SortDescription = requestDto.SortDescription;
             existingProduct.DosageForm = requestDto.DosageForm;
@@ -203,19 +233,14 @@ namespace Pharmacy_API.Services.Product
             existingProduct.ActiveFrom = requestDto.ActiveFrom;
             existingProduct.ProductionDate = requestDto.ProductionDate;
 
-            // ✅ Chỉ update FK nếu > 0
             if (requestDto.CategoryId > 0)
                 existingProduct.CategoryId = requestDto.CategoryId;
-
             if (requestDto.BrandId > 0)
                 existingProduct.BrandId = requestDto.BrandId;
-
             if (requestDto.UnitId > 0)
                 existingProduct.UnitId = requestDto.UnitId;
-
             if (requestDto.BrandOriginId > 0)
                 existingProduct.BrandOriginId = requestDto.BrandOriginId;
-
             if (requestDto.ManufacturerId > 0)
                 existingProduct.ManufacturerId = requestDto.ManufacturerId;
 
@@ -228,31 +253,27 @@ namespace Pharmacy_API.Services.Product
             var product = await _context.Products.FindAsync(id);
             if (product == null) return false;
 
+            // Xóa ảnh trên Cloudinary
+            await DeleteImagesAsync(product.ImagePublicIds);
+
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
-
             return true;
         }
 
-        /// <summary> 
-        /// Tự động sinh mã sản phẩm ngẫu nhiên 8 ký tự (chữ hoa + số), không trùng lặp
-        /// </summary>
         private async Task<string> GenerateProductCodeAsync()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var random = new Random();
             string code;
-
             do
             {
                 code = new string(Enumerable.Repeat(chars, 8)
                     .Select(s => s[random.Next(s.Length)]).ToArray());
             }
-            while (await _context.Products.AnyAsync(p => p.ProductCode == code)); // Đảm bảo không trùng
-
+            while (await _context.Products.AnyAsync(p => p.ProductCode == code));
             return code;
         }
-
 
         public async Task<ProductDto?> GetProductByAliasAsync(string nameAlias)
         {

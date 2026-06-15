@@ -6,18 +6,19 @@ namespace Pharmacy_API.Dtos.Product
 {
     public class ProductRequestDto
     {
-
         [StringLength(50)]
         public string? ProductCode { get; set; }
         [Required]
         [StringLength(350)]
         public string ProductName { get; set; } = string.Empty;
 
-        // ✅ Sửa: double → decimal
         [Range(0, (double)decimal.MaxValue)]
         public decimal Price { get; set; }
 
         public string? Images { get; set; }
+
+        // THÊM: Nhận nhiều file ảnh từ Form
+        public List<IFormFile>? ImageFiles { get; set; }
 
         [StringLength(3000)]
         public string? Description { get; set; }
@@ -27,7 +28,6 @@ namespace Pharmacy_API.Dtos.Product
 
         public DateTime ProductionDate { get; set; }
 
-        // ✅ Sửa: double → decimal
         [Range(0, (double)decimal.MaxValue)]
         public decimal Sale { get; set; }
 

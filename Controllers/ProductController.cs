@@ -31,14 +31,14 @@ namespace Pharmacy_API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] ProductRequestDto dto)
+        public async Task<IActionResult> Create([FromForm] ProductRequestDto dto)
         {
             var result = await _productService.CreateProductAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = result.ProductId }, result);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] ProductRequestDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] ProductRequestDto dto)
         {
             var result = await _productService.UpdateProductAsync(id, dto);
             return result == null ? NotFound() : Ok(result);
@@ -50,6 +50,7 @@ namespace Pharmacy_API.Controllers
             var success = await _productService.DeleteProductAsync(id);
             return success ? NoContent() : NotFound();
         }
+
         [HttpGet("alias/{nameAlias}")]
         public async Task<IActionResult> GetByAlias(string nameAlias)
         {
