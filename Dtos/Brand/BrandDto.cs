@@ -15,5 +15,7 @@ namespace Pharmacy_API.Dtos.Brand
         public string? Address { get; set; }
         public string? Description { get; set; }
         public string? Sort { get; set; }
+        public string ImagePublicId { get; set; } // ✅ Thêm nếu muốn trả về
+
     }
 }

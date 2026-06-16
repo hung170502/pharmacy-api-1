@@ -30,6 +30,14 @@ namespace Pharmacy_API.Controllers
         public async Task<ActionResult<BrandDto?>> Insert([FromForm] BrandRequestDto brandRequestDto)
         {
             brandRequestDto.SetUserID(await GetUserID());
+
+            // ✅ Log để debug
+            _logger.LogInformation($"📥 BrandName: {brandRequestDto.BrandName}");
+            _logger.LogInformation($"📥 BrandImage URL: {brandRequestDto.BrandImage}");
+            _logger.LogInformation($"📥 ImagePublicId: {brandRequestDto.ImagePublicId}");
+            _logger.LogInformation($"📥 Has Image file: {brandRequestDto.Image != null}");
+
+            // ✅ Truyền cả requestDto và file
             BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto, brandRequestDto.Image);
 
             if (brandDto != null)

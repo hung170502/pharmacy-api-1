@@ -30,8 +30,7 @@ using Pharmacy_API.Supports;
 using Microsoft.Extensions.Caching.Distributed;
 using Pharmacy_API.Repositories;
 using Pharmacy_API.Services; // THÊM: để dùng CloudinaryService
-using Pharmacy_API.MapperProfiles.Account;
-using Pharmacy_API.MapperProfiles.Question;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -266,7 +265,12 @@ builder.Services.AddSingleton<IDistributedCache>(sp =>
     return new RedisCacheService(httpClient, configuration, logger);
 });
 
-builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+// AutoMapper - Thêm QuestionProfile
+builder.Services.AddAutoMapper(
+    typeof(AutoMapperProfile).Assembly,
+    typeof(QuestionProfile).Assembly
+);
+
 #region Repositories
 
 // Account
