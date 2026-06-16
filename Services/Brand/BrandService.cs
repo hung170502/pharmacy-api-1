@@ -33,36 +33,55 @@ namespace Pharmacy_API.Services.Brand
         }
 
         #region Insert Brand
+        // Services/Brand/BrandService.cs
+        // Services/Brand/BrandService.cs
         public async Task<BrandDto?> InsertBrandAsync(BrandRequestDto requestDto, IFormFile? image)
         {
             _logger.LogInformation("Insert Brand");
 
-            Pharmacy_API.Models.Brand.Brand brand = new Pharmacy_API.Models.Brand.Brand();
-            brand.BrandName = requestDto.BrandName;
-            brand.Email = requestDto.Email;
-            brand.PhoneNumber = requestDto.PhoneNumber;
-            brand.Address = requestDto.Address;
-            brand.Description = requestDto.Description;
-            brand.Sort = requestDto.Sort;
+            var brand = new Pharmacy_API.Models.Brand.Brand
+            {
+                BrandName = requestDto.BrandName,
+                Email = requestDto.Email,
+                PhoneNumber = requestDto.PhoneNumber,
+                Address = requestDto.Address,
+                Description = requestDto.Description,
+                Sort = requestDto.Sort
+            };
 
-            if (image != null)
+            // ✅ QUAN TRỌNG: Lưu URL Cloudinary từ frontend
+            if (!string.IsNullOrEmpty(requestDto.BrandImage))
+            {
+                brand.BrandImage = requestDto.BrandImage;
+                brand.ImagePublicId = requestDto.ImagePublicId;
+                _logger.LogInformation($"✅ Saving Cloudinary URL: {brand.BrandImage}");
+                _logger.LogInformation($"✅ Saving PublicId: {brand.ImagePublicId}");
+            }
+            // Nếu frontend gửi file (trường hợp không upload trước)
+            else if (image != null)
             {
                 var uploadResult = await _cloudinaryService.UploadImageAsync(image, "brands");
                 if (uploadResult != null && uploadResult.Error == null)
                 {
                     brand.BrandImage = uploadResult.SecureUrl.ToString();
                     brand.ImagePublicId = uploadResult.PublicId;
-                    _logger.LogInformation($"Uploaded image: {brand.BrandImage}");
+                    _logger.LogInformation($"✅ Uploaded new image: {brand.BrandImage}");
                 }
                 else
                 {
-                    _logger.LogError($"Upload failed: {uploadResult?.Error?.Message}");
+                    _logger.LogError($"❌ Upload failed: {uploadResult?.Error?.Message}");
                 }
             }
 
-            Pharmacy_API.Models.Brand.Brand? newBrand = await _brandRepository.InsertAsync(brand);
+            var newBrand = await _brandRepository.InsertAsync(brand);
 
-            return newBrand == null ? null : _mapper.Map<Pharmacy_API.Models.Brand.Brand, BrandDto>(newBrand);
+            // Log kết quả lưu
+            if (newBrand != null)
+            {
+                _logger.LogInformation($"✅ Brand saved with image: {newBrand.BrandImage}");
+            }
+
+            return newBrand == null ? null : _mapper.Map<BrandDto>(newBrand);
         }
         #endregion
 
@@ -71,7 +90,7 @@ namespace Pharmacy_API.Services.Brand
         {
             _logger.LogInformation("Update Brand");
 
-            Pharmacy_API.Models.Brand.Brand? brand = await _brandRepository.GetByIdAsync(id);
+            var brand = await _brandRepository.GetByIdAsync(id);
             if (brand != null)
             {
                 brand.BrandName = requestDto.BrandName;
@@ -81,12 +100,26 @@ namespace Pharmacy_API.Services.Brand
                 brand.Description = requestDto.Description;
                 brand.Sort = requestDto.Sort;
 
-                if (image != null)
+                // ✅ QUAN TRỌNG: Cập nhật URL Cloudinary từ frontend
+                if (!string.IsNullOrEmpty(requestDto.BrandImage))
+                {
+                    // Xóa ảnh cũ trên Cloudinary (nếu có)
+                    if (!string.IsNullOrEmpty(brand.ImagePublicId))
+                    {
+                        await _cloudinaryService.DeleteImageAsync(brand.ImagePublicId);
+                        _logger.LogInformation($"🗑️ Deleted old image: {brand.ImagePublicId}");
+                    }
+
+                    brand.BrandImage = requestDto.BrandImage;
+                    brand.ImagePublicId = requestDto.ImagePublicId;
+                    _logger.LogInformation($"✅ Updated with Cloudinary URL: {brand.BrandImage}");
+                }
+                // Nếu có file mới upload
+                else if (image != null)
                 {
                     if (!string.IsNullOrEmpty(brand.ImagePublicId))
                     {
-                        bool deleted = await _cloudinaryService.DeleteImageAsync(brand.ImagePublicId);
-                        _logger.LogInformation($"Deleted old image: {deleted}");
+                        await _cloudinaryService.DeleteImageAsync(brand.ImagePublicId);
                     }
 
                     var uploadResult = await _cloudinaryService.UploadImageAsync(image, "brands");
@@ -94,7 +127,7 @@ namespace Pharmacy_API.Services.Brand
                     {
                         brand.BrandImage = uploadResult.SecureUrl.ToString();
                         brand.ImagePublicId = uploadResult.PublicId;
-                        _logger.LogInformation($"Uploaded new image: {brand.BrandImage}");
+                        _logger.LogInformation($"✅ Uploaded new image: {brand.BrandImage}");
                     }
                 }
 

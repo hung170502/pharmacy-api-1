@@ -31,22 +31,21 @@ namespace Pharmacy_API.Controllers
         {
             brandRequestDto.SetUserID(await GetUserID());
 
-            // ✅ Log để debug
             _logger.LogInformation($"📥 BrandName: {brandRequestDto.BrandName}");
             _logger.LogInformation($"📥 BrandImage URL: {brandRequestDto.BrandImage}");
             _logger.LogInformation($"📥 ImagePublicId: {brandRequestDto.ImagePublicId}");
             _logger.LogInformation($"📥 Has Image file: {brandRequestDto.Image != null}");
 
-            // ✅ Truyền cả requestDto và file
-            BrandDto? brandDto = await _brandService.InsertBrandAsync(brandRequestDto, brandRequestDto.Image);
+            // ✅ Truyền cả URL và file (ưu tiên URL)
+            var brandDto = await _brandService.InsertBrandAsync(brandRequestDto, brandRequestDto.Image);
 
             if (brandDto != null)
             {
-                _logger.LogInformation("Insert Success");
+                _logger.LogInformation("✅ Insert Success");
                 return StatusCode(201, brandDto);
             }
 
-            return StatusCode(500);
+            return StatusCode(500, new { error = "Failed to create brand" });
         }
         #endregion
 
