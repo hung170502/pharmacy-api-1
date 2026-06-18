@@ -31,10 +31,7 @@ namespace Pharmacy_API.Controllers
         {
             brandRequestDto.SetUserID(await GetUserID());
 
-            _logger.LogInformation($"📥 BrandName: {brandRequestDto.BrandName}");
-            _logger.LogInformation($"📥 BrandImage URL: {brandRequestDto.BrandImage}");
-            _logger.LogInformation($"📥 ImagePublicId: {brandRequestDto.ImagePublicId}");
-            _logger.LogInformation($"📥 Has Image file: {brandRequestDto.Image != null}");
+           
 
             // ✅ Truyền cả URL và file (ưu tiên URL)
             var brandDto = await _brandService.InsertBrandAsync(brandRequestDto, brandRequestDto.Image);
