@@ -30,33 +30,18 @@ using Pharmacy_API.Supports;
 using Microsoft.Extensions.Caching.Distributed;
 using Pharmacy_API.Repositories;
 using Pharmacy_API.Services; // THÊM: để dùng CloudinaryService
-using Supabase;
-using Supabase.Core;
-using Supabase.Interfaces;
+
 var builder = WebApplication.CreateBuilder(args);
-// ✅ THÊM: Load configuration từ Environment Variables
-builder.Configuration.AddEnvironmentVariables();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.Configure<AppSettings>(builder.Configuration);
 
-// ✅ FIX: Connection String với Session Pooler mới
-string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration["ConnectionStrings__DefaultConnection"]
-    ?? "Host=aws-1-ap-south-1.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.wnvtlloluziuvjmxbkmm;Password=F8eon8AAaxYRt90p;SSL Mode=Require;Trust Server Certificate=true;Pooling=true;Maximum Pool Size=10;Timeout=30;CommandTimeout=60;";
+string connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Log connection string (ẩn password)
-var maskedConn = connectionString.Replace("F8eon8AAaxYRt90p", "****");
-Console.WriteLine($"🔗 Connection: {maskedConn}");
 builder.Services.AddDbContext<AccountContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-        npgsqlOptions.CommandTimeout(120);
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-    }));
+    options.UseNpgsql(connectionString));
 
 
 using var scope = builder.Services.BuildServiceProvider().CreateScope();
@@ -67,32 +52,22 @@ dbContext.Database.Migrate();
 
 builder.Services.AddCors(options =>
 {
-    // ✅ FIX: Không dùng AllowCredentials với AllowAnyOrigin
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        var allowedOrigins = builder.Configuration["AllowOrigins"]?.Split(",")
-            ?? new[] {
-                "https://pharmacy-api.onrender.com",
-                "https://hongochung.onrender.com",
-                "http://localhost:8081",
-                "http://localhost:3000",
-                "http://192.168.1.5:8081",
-                "http://192.168.1.5:3000"
-            };
+        var allowedOrigins =
+            builder.Configuration["AllowOrigins"]?.Split(",")
+            ?? Array.Empty<string>();
 
         policy.WithOrigins(allowedOrigins)
-              .WithMethods("POST", "GET", "PUT", "DELETE", "OPTIONS", "PATCH")
-              .AllowAnyHeader()
-              .AllowCredentials(); // ✅ Chỉ dùng khi có origins cụ thể
+              .WithMethods("POST", "GET", "PUT", "DELETE")
+              .AllowAnyHeader();
     });
 
-    // ✅ Policy cho phép tất cả (KHÔNG dùng AllowCredentials)
     options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
-        // ❌ KHÔNG AllowCredentials() ở đây
     });
 });
 
@@ -316,26 +291,8 @@ builder.Services.AddScoped<IUnitRepository, UnitRepository>();
 // Q&A Repositories
 builder.Services.AddScoped<IQARepository, QARepository>();
 
-#endregion
 
-#region Services
 
-builder.Services.AddSingleton<Supabase.Client>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var supabaseUrl = configuration["Supabase:Url"]
-        ?? "https://wnvtlloluziuvjmxbkmm.supabase.co";
-    var supabaseKey = configuration["Supabase:Key"];
-
-    var options = new SupabaseOptions
-    {
-        // Các property có sẵn trong phiên bản mới
-        AutoRefreshToken = true,
-        // PersistSession đã bị xóa hoặc đổi tên
-    };
-
-    return new Supabase.Client(supabaseUrl, supabaseKey, options);
-});
 
 // Account
 builder.Services.AddScoped<IUserService, UserService>();
@@ -380,15 +337,7 @@ var app = builder.Build();
 
 #region Middleware
 
-// ✅ FIX: Dùng CORS policy phù hợp với environment
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("AllowAll");
-}
-else
-{
-    app.UseCors("AllowSpecificOrigins");
-}
+app.UseCors("AllowAll");
 
 // Luôn bật Swagger cho cả Development và Production
 app.UseSwagger();
@@ -416,40 +365,11 @@ app.MapControllers();
 
 #endregion
 
-// ✅ Giữ nguyên phần này ở cuối file
+// Chạy Seed Data sau khi app khởi động
 using (var seedScope = app.Services.CreateScope())
 {
-    var services = seedScope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AccountContext>(); // Đổi tên thành context
-
-        Console.WriteLine("🔗 Testing database connection...");
-        var canConnect = await context.Database.CanConnectAsync();
-        Console.WriteLine($"✅ Database connection: {(canConnect ? "Success" : "Failed")}");
-
-        if (canConnect)
-        {
-            Console.WriteLine("📦 Running migrations...");
-            await context.Database.MigrateAsync();
-            Console.WriteLine("✅ Migration completed!");
-
-            Console.WriteLine("🌱 Seeding data...");
-            var seedService = services.GetRequiredService<SeedDataService>();
-            await seedService.SeedAsync();
-            Console.WriteLine("✅ Seed data completed!");
-        }
-        else
-        {
-            Console.WriteLine("⚠️ Cannot connect to database. Skipping migration and seed.");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ Error during migration/seed: {ex.Message}");
-        Console.WriteLine($"📚 Inner error: {ex.InnerException?.Message}");
-        // App vẫn chạy dù migration fail
-    }
+    var seedService = seedScope.ServiceProvider.GetRequiredService<SeedDataService>();
+    await seedService.SeedAsync();
 }
 
 app.Run();
