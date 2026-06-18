@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +76,6 @@ namespace Pharmacy_API.Repositories.Account
 
             return new PagedDto<UserRole>(total, await query.ToListAsync());
         }
-
         #endregion
 
         #region Get Role By UserId
@@ -89,8 +88,27 @@ namespace Pharmacy_API.Repositories.Account
 
             return roleIds;
         }
-
         #endregion
 
+        // ✅ THÊM MỚI: Lấy danh sách UserId theo RoleId
+        #region Get UserIds By RoleId
+        public async Task<ICollection<string>> GetUserIdsByRoleIdAsync(string roleId)
+        {
+            var userIds = await _db.UserRoles
+                              .Where(ur => ur.RoleId == roleId)
+                              .Select(ur => ur.UserId)
+                              .ToListAsync();
+
+            return userIds;
+        }
+        #endregion
+
+        // ✅ THÊM MỚI: Lấy IQueryable
+        #region Get Queryable
+        public IQueryable<UserRole> GetQueryable()
+        {
+            return _db.UserRoles.AsQueryable();
+        }
+        #endregion
     }
 }

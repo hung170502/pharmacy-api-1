@@ -279,14 +279,41 @@ namespace Pharmacy_API.Services.Account
         {
             _logger.LogInformation("GetList Users");
 
-            PagedDto<ApplicationUser> applicationUsers = await _userRepository.GetListAsync(
-                _mapper.Map<UserFilterDto, UserFilter>(filterDto));
+            // ✅ ExcludeAdmins là bool, dùng trực tiếp
+            var excludeAdmins = filterDto.ExcludeAdmins; // Không cần ?? hay GetValueOrDefault
 
-            List<UserDto> userDtos = applicationUsers.Data
+            // Lấy danh sách user từ repository
+            var userFilter = _mapper.Map<UserFilterDto, UserFilter>(filterDto);
+            PagedDto<ApplicationUser> applicationUsers = await _userRepository.GetListAsync(userFilter);
+
+            // Lấy danh sách Admin UserIds để loại bỏ
+            ICollection<string>? adminUserIds = null;
+            if (excludeAdmins) // ✅ Dùng trực tiếp
+            {
+                var adminRole = await _roleManager.Roles
+                    .FirstOrDefaultAsync(r => r.NormalizedName == "ADMIN");
+
+                if (adminRole != null)
+                {
+                    adminUserIds = await _userRoleRepository.GetUserIdsByRoleIdAsync(adminRole.Id);
+                    _logger.LogInformation($"Found {adminUserIds?.Count ?? 0} admin users to exclude");
+                }
+            }
+
+            // Lọc bỏ Admin
+            var filteredUsers = applicationUsers.Data;
+            if (adminUserIds != null && adminUserIds.Any())
+            {
+                filteredUsers = filteredUsers.Where(u => !adminUserIds.Contains(u.Id)).ToList();
+                _logger.LogInformation($"Filtered out {applicationUsers.Data.Count - filteredUsers.Count} admin users");
+            }
+
+            // Map to DTO
+            List<UserDto> userDtos = filteredUsers
                 .Select(user => _mapper.Map<ApplicationUser, UserDto>(user))
                 .ToList();
 
-            // ✅ LUÔN load roles cho tất cả users
+            // Load roles
             foreach (var userDto in userDtos)
             {
                 var user = await _userManager.FindByIdAsync(userDto.Id);
@@ -296,7 +323,6 @@ namespace Pharmacy_API.Services.Account
                     userDto.RoleNames = roleNames.ToList();
                 }
 
-                // Nếu isDeep, load cả Role objects
                 if (filterDto.IsDeep)
                 {
                     var roleIds = await _userRoleRepository.GetRolesByUserIdAsync(userDto.Id);
@@ -308,7 +334,9 @@ namespace Pharmacy_API.Services.Account
                             .Select(r => new RoleDto
                             {
                                 Id = r.Id,
-                                Name = r.Name
+                                Name = r.Name,
+                                DisplayName = r.DisplayName,
+                                Description = r.Description
                             }).FirstOrDefault();
                         if (role != null)
                         {
@@ -319,7 +347,16 @@ namespace Pharmacy_API.Services.Account
                 }
             }
 
-            return new PagedDto<UserDto>(applicationUsers.TotalRecords, userDtos);
+            // Cập nhật total records
+            var totalRecords = applicationUsers.TotalRecords;
+            if (adminUserIds != null && adminUserIds.Any())
+            {
+                totalRecords = userDtos.Count;
+            }
+
+            _logger.LogInformation($"GetList Users: {totalRecords} total, {userDtos.Count} returned, ExcludeAdmins={excludeAdmins}");
+
+            return new PagedDto<UserDto>(totalRecords, userDtos);
         }
         #endregion
 
