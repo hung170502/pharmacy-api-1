@@ -30,7 +30,9 @@ using Pharmacy_API.Supports;
 using Microsoft.Extensions.Caching.Distributed;
 using Pharmacy_API.Repositories;
 using Pharmacy_API.Services; // THÊM: để dùng CloudinaryService
-
+using Supabase;
+using Supabase.Core;
+using Supabase.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -294,6 +296,23 @@ builder.Services.AddScoped<IQARepository, QARepository>();
 #endregion
 
 #region Services
+
+builder.Services.AddSingleton<Supabase.Client>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var supabaseUrl = configuration["Supabase:Url"]
+        ?? "https://wnvtlloluziuvjmxbkmm.supabase.co";
+    var supabaseKey = configuration["Supabase:Key"];
+
+    var options = new SupabaseOptions
+    {
+        // Các property có sẵn trong phiên bản mới
+        AutoRefreshToken = true,
+        // PersistSession đã bị xóa hoặc đổi tên
+    };
+
+    return new Supabase.Client(supabaseUrl, supabaseKey, options);
+});
 
 // Account
 builder.Services.AddScoped<IUserService, UserService>();
