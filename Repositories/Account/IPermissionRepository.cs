@@ -1,6 +1,7 @@
-using Pharmacy_API.Filters.Account;
+﻿using Pharmacy_API.Filters.Account;
 using Pharmacy_API.Models.Account;
 using Pharmacy_API.Supports;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace Pharmacy_API.Repositories.Account
@@ -10,5 +11,6 @@ namespace Pharmacy_API.Repositories.Account
         Task<Permission?> GetByIdAsync(string id, bool? isDeep = false);
         Task<PagedDto<Permission>> GetListAsync(PermissionFilter filter);
         //put your code here
+        Task<bool> AnyAsync(Expression<Func<Permission, bool>> predicate);  // ✅ THÊM
     }
 }

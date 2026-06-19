@@ -229,11 +229,7 @@ builder.Services.AddHttpClient<IEmailSenderService, EmailSenderService>();
 
 #endregion
 
-#region Seed Data Service
 
-builder.Services.AddScoped<SeedDataService>();
-
-#endregion
 
 #region Compression
 
@@ -365,11 +361,5 @@ app.MapControllers();
 
 #endregion
 
-// Chạy Seed Data sau khi app khởi động
-using (var seedScope = app.Services.CreateScope())
-{
-    var seedService = seedScope.ServiceProvider.GetRequiredService<SeedDataService>();
-    await seedService.SeedAsync();
-}
 
 app.Run();

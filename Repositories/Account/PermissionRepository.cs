@@ -1,4 +1,5 @@
-using System.Linq;
+﻿using System.Linq;
+using System.Linq.Expressions;  // ✅ THÊM USING NÀY
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,11 @@ namespace Pharmacy_API.Repositories.Account
         {
 
         }
-
+        // ✅ THÊM METHOD NÀY
+        public async Task<bool> AnyAsync(Expression<Func<Permission, bool>> predicate)
+        {
+            return await _db.Permissions.AnyAsync(predicate);
+        }
         private IQueryable<Permission> IncludeDeepObjects(IQueryable<Permission> query)
         {
             //return query.Include(o => o.ReferTable);

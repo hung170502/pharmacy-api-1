@@ -24,7 +24,7 @@ namespace Pharmacy_API.MapperProfiles.Account
             #endregion
 
             #region Permission Mapper
-            CreateMap<Permission, PermissionDto>();
+            CreateMap<Permission, PermissionDto>().ReverseMap();
             CreateMap<PermissionFilterDto, PermissionFilter>();
             #endregion
 
