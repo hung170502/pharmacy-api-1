@@ -16,6 +16,10 @@ namespace Pharmacy_API.Dtos.Account
         [Required]
         public string Password { get; set; }
 
+        // ===== THÊM 2 TRƯỜNG MỚI =====
+        public string? PhoneNumber { get; set; }
+        public string? PhoneOtp { get; set; }
+
         public RegisterRequestDto()
         {
             Email = string.Empty;
@@ -23,4 +27,3 @@ namespace Pharmacy_API.Dtos.Account
         }
     }
 }
-

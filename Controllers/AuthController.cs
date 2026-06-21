@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -36,10 +35,13 @@ namespace Pharmacy_API.Controllers
         private readonly IAuthManagerService _authManagerService;
         private readonly IDistributedCache _distributedCache;
         private readonly IEmailSenderService _emailSender;
+        private readonly IPhoneVerificationService _phoneVerification;
+        private readonly IPhoneOtpService _phoneOtpService;
         #endregion
 
         #region Constructors
-        public AuthController(IOptions<AppSettings> appSettings,
+        public AuthController(
+              IOptions<AppSettings> appSettings,
               ILogger<AuthController> logger,
               SignInManager<ApplicationUser> signInManager,
               UserManager<ApplicationUser> userManager,
@@ -47,7 +49,9 @@ namespace Pharmacy_API.Controllers
               IJwtAuthManagerService jwtAuthManager,
               IDistributedCache distributedCache,
               IAuthManagerService authManagerService,
-              IEmailSenderService emailSender) // 👈 Thêm
+              IEmailSenderService emailSender,
+              IPhoneVerificationService phoneVerification,
+              IPhoneOtpService phoneOtpService)
         {
             _logger = logger;
             _appSettings = appSettings.Value;
@@ -57,11 +61,14 @@ namespace Pharmacy_API.Controllers
             _jwtAuthManager = jwtAuthManager;
             _authManagerService = authManagerService;
             _distributedCache = distributedCache;
-            _emailSender = emailSender; // 👈 Thêm
+            _emailSender = emailSender;
+            _phoneVerification = phoneVerification;
+            _phoneOtpService = phoneOtpService;
         }
         #endregion
 
         #region Functions
+
         [HttpPost]
         [AllowAnonymous]
         [Route("Login")]
@@ -80,7 +87,6 @@ namespace Pharmacy_API.Controllers
                 });
             }
 
-            // Kiểm tra email đã xác nhận chưa
             if (!user.EmailConfirmed)
             {
                 return BadRequest(new ErrorResponseDto
@@ -90,7 +96,6 @@ namespace Pharmacy_API.Controllers
                 });
             }
 
-            // Kiểm tra password
             var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
 
             if (!isPasswordValid)
@@ -102,7 +107,6 @@ namespace Pharmacy_API.Controllers
                 });
             }
 
-            // Set LastLogin
             var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
@@ -111,7 +115,6 @@ namespace Pharmacy_API.Controllers
 
             await _userManager.UpdateAsync(user);
 
-            // JWT
             var userClaims = await _jwtAuthManager.GetUserClaims(user);
 
             var jwtResult = await _jwtAuthManager.GenerateTokens(
@@ -132,7 +135,6 @@ namespace Pharmacy_API.Controllers
                     )
                 });
 
-            // Save refresh token
             await _userManager.SetAuthenticationTokenAsync(
                 user,
                 _appSettings.Jwt.AppName,
@@ -165,17 +167,61 @@ namespace Pharmacy_API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
+            // ===== Xác minh SĐT nếu có =====
+            if (!string.IsNullOrEmpty(request.PhoneNumber))
+            {
+                // Validate format SĐT
+                var validation = _phoneVerification.Validate(request.PhoneNumber);
+                if (!validation.IsValid)
+                {
+                    return BadRequest(new ErrorResponseDto
+                    {
+                        Code = "InvalidPhone",
+                        Description = validation.Message ?? "Số điện thoại không hợp lệ"
+                    });
+                }
+
+                // Nếu có OTP thì verify
+                if (!string.IsNullOrEmpty(request.PhoneOtp))
+                {
+                    var otpResult = await _phoneOtpService.VerifyOtpAsync(
+                        validation.FormattedNumber!,
+                        request.PhoneOtp);
+
+                    if (!otpResult.Success)
+                    {
+                        return BadRequest(new ErrorResponseDto
+                        {
+                            Code = "InvalidOtp",
+                            Description = otpResult.Message
+                        });
+                    }
+                }
+                else
+                {
+                    return BadRequest(new ErrorResponseDto
+                    {
+                        Code = "MissingOtp",
+                        Description = "Vui lòng xác minh số điện thoại bằng OTP"
+                    });
+                }
+
+                // Gán SĐT đã chuẩn hóa
+                request.PhoneNumber = validation.FormattedNumber;
+            }
+
             var user = new ApplicationUser
             {
                 UserName = request.Email,
                 Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+                PhoneNumberConfirmed = !string.IsNullOrEmpty(request.PhoneNumber)
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
 
             if (result.Succeeded)
             {
-                // ✅ Đảm bảo role Customer tồn tại
                 try
                 {
                     if (!await _roleManager.RoleExistsAsync("Customer"))
@@ -207,6 +253,8 @@ namespace Pharmacy_API.Controllers
                     jwtResult.RefreshToken);
 
                 var roles = await _userManager.GetRolesAsync(user);
+
+                // Gửi OTP Email xác nhận
                 await _authManagerService.SendOtpAsync(user.Email);
 
                 var loggedInUser = new
@@ -215,7 +263,9 @@ namespace Pharmacy_API.Controllers
                     AccessToken = jwtResult.AccessToken,
                     RefreshToken = jwtResult.RefreshToken,
                     UserId = user.Id,
-                    Roles = roles.ToList()
+                    Roles = roles.ToList(),
+                    PhoneNumber = user.PhoneNumber,
+                    PhoneConfirmed = user.PhoneNumberConfirmed
                 };
 
                 return Ok(loggedInUser);
@@ -225,7 +275,6 @@ namespace Pharmacy_API.Controllers
                 result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description })
                 .First());
         }
-
 
         [HttpPost]
         [AllowAnonymous]
@@ -237,7 +286,8 @@ namespace Pharmacy_API.Controllers
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user is null)
             {
-                return StatusCode(StatusCodes.Status400BadRequest, new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "Error finding user for unspecified email" });
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    new ErrorResponseDto { Code = ResponseCode.UserNotFound, Description = "Error finding user for unspecified email" });
             }
 
             var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Code));
@@ -256,33 +306,34 @@ namespace Pharmacy_API.Controllers
 
             if (user is null)
             {
-                return StatusCode(StatusCodes.Status400BadRequest, new ErrorResponseDto { Code = ResponseCode.AuthInvalid, Description = "Invalid credentials" });
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    new ErrorResponseDto { Code = ResponseCode.AuthInvalid, Description = "Invalid credentials" });
             }
 
-            var isValid = await _userManager.VerifyUserTokenAsync(user, _appSettings.Jwt.AppName, _appSettings.Jwt.RefreshTokenName, request.RefreshToken);
+            var isValid = await _userManager.VerifyUserTokenAsync(
+                user, _appSettings.Jwt.AppName, _appSettings.Jwt.RefreshTokenName, request.RefreshToken);
 
             if (!isValid)
             {
-                return StatusCode(StatusCodes.Status400BadRequest, new ErrorResponseDto { Code = ResponseCode.AuthInvalid, Description = "Invalid credentials" });
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    new ErrorResponseDto { Code = ResponseCode.AuthInvalid, Description = "Invalid credentials" });
             }
 
             await _distributedCache.RemoveAsync(user.Email ?? string.Empty);
             var userClaims = await _jwtAuthManager.GetUserClaims(user);
             var jwtResult = await _jwtAuthManager.GenerateTokens(user, userClaims, DateTime.Now);
-            await _distributedCache.SetStringAsync(user.Email ?? string.Empty, jwtResult.AccessToken, new DistributedCacheEntryOptions
-            {
-                AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
+            await _distributedCache.SetStringAsync(user.Email ?? string.Empty, jwtResult.AccessToken,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(_appSettings.Jwt.AccessTokenExpiryInMinutes),
+                });
 
-            });
-
-            //save in db
             await _userManager.SetAuthenticationTokenAsync(
                    user,
                    _appSettings.Jwt.AppName,
                    _appSettings.Jwt.RefreshTokenName,
                    jwtResult.RefreshToken);
             return Ok(jwtResult);
-
         }
 
         [HttpPost]
@@ -303,10 +354,8 @@ namespace Pharmacy_API.Controllers
                 });
             }
 
-            // Xóa access token trong cache
             await _distributedCache.RemoveAsync(email);
 
-            // Update trạng thái user
             var user = await _userManager.FindByEmailAsync(email);
 
             if (user != null)
@@ -322,7 +371,7 @@ namespace Pharmacy_API.Controllers
             });
         }
 
-        #region Login google
+        #region Login Google
         [HttpGet("Login-google")]
         [AllowAnonymous]
         public IActionResult GetGoogleLoginUrl([FromQuery] string? platform = "web", [FromQuery] string? redirectUrl = null)
@@ -331,7 +380,6 @@ namespace Pharmacy_API.Controllers
             string redirectUri = _appSettings.Google.RedirectUrl;
             string scope = "openid email profile";
 
-            // ✅ Tự động chọn state dựa vào platform
             string state;
             if (!string.IsNullOrEmpty(redirectUrl))
             {
@@ -355,7 +403,6 @@ namespace Pharmacy_API.Controllers
 
             return Ok(new { url = googleUrl });
         }
-        #endregion
 
         [HttpGet("google/callback")]
         [AllowAnonymous]
@@ -393,7 +440,6 @@ namespace Pharmacy_API.Controllers
                         result.Errors.Select(x => new ErrorResponseDto { Code = x.Code, Description = x.Description }).First());
                 }
 
-                // ✅ Gán role Customer cho user Google mới
                 try
                 {
                     if (!await _roleManager.RoleExistsAsync("Customer"))
@@ -414,7 +460,6 @@ namespace Pharmacy_API.Controllers
                 }
             }
 
-            // Tạo token
             await _distributedCache.RemoveAsync(user.Email ?? string.Empty);
             var claims = await _jwtAuthManager.GetUserClaims(user);
             var jwtResult = await _jwtAuthManager.GenerateTokens(user, claims, DateTime.UtcNow);
@@ -429,13 +474,10 @@ namespace Pharmacy_API.Controllers
             await _userManager.SetAuthenticationTokenAsync(
                 user, _appSettings.Jwt.AppName, _appSettings.Jwt.RefreshTokenName, jwtResult.RefreshToken);
 
-            // Lấy roles của user
             var roles = await _userManager.GetRolesAsync(user);
 
-            // ✅ Tự động detect platform từ state
             var decodedState = !string.IsNullOrEmpty(state) ? Uri.UnescapeDataString(state) : "";
 
-            // Mobile App
             if (decodedState.StartsWith("antamvietpharmacy://"))
             {
                 var deepLinkUrl = $"{decodedState}" +
@@ -449,7 +491,6 @@ namespace Pharmacy_API.Controllers
                 return Redirect(deepLinkUrl);
             }
 
-            // Web
             if (decodedState.StartsWith("http"))
             {
                 var webRedirectUrl = $"{decodedState}" +
@@ -463,7 +504,6 @@ namespace Pharmacy_API.Controllers
                 return Redirect(webRedirectUrl);
             }
 
-            // Fallback
             return Ok(new LoginResponseDto
             {
                 Data = new UserDataDto
@@ -480,8 +520,9 @@ namespace Pharmacy_API.Controllers
         }
         #endregion
 
-
         #region OTP
+
+        // ===== Email OTP (cũ) =====
         [HttpPost("Send-Otp")]
         [AllowAnonymous]
         public async Task<IActionResult> SendOtp([FromBody] string email)
@@ -503,7 +544,7 @@ namespace Pharmacy_API.Controllers
                 var user = await _userManager.FindByEmailAsync(request.Email);
                 if (user != null)
                 {
-                    user.EmailConfirmed = true; // 🔹 confirm email khi OTP đúng
+                    user.EmailConfirmed = true;
                     await _userManager.UpdateAsync(user);
                 }
                 return Ok(new { success = true, message = "OTP verified successfully", emailConfirmed = true });
@@ -512,14 +553,106 @@ namespace Pharmacy_API.Controllers
             return BadRequest(new { success = false, message = "Invalid or expired OTP" });
         }
 
+        // ===== Phone OTP (MỚI) =====
+
+        /// <summary>
+        /// Gửi mã OTP đến số điện thoại
+        /// </summary>
+        [HttpPost("Send-Phone-Otp")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> SendPhoneOtp([FromBody] SendPhoneOtpRequest request)
+        {
+            if (string.IsNullOrEmpty(request.PhoneNumber))
+            {
+                return BadRequest(new { success = false, message = "Số điện thoại không được để trống" });
+            }
+
+            // Validate SĐT
+            var validation = _phoneVerification.Validate(request.PhoneNumber);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { success = false, message = validation.Message });
+            }
+
+            // Gửi OTP
+            var result = await _phoneOtpService.GenerateOtpAsync(validation.FormattedNumber!);
+
+            if (result.Success)
+            {
+                _logger.LogInformation($"Phone OTP sent to {validation.FormattedNumber}");
+                return Ok(new
+                {
+                    success = true,
+                    message = "Mã OTP đã được gửi đến số điện thoại của bạn",
+                    expiresInMinutes = result.ExpiresInMinutes,
+                    carrier = validation.Carrier,
+                    otp = result.Otp // ⚠️ XÓA DÒNG NÀY TRONG PRODUCTION
+                });
+            }
+
+            return BadRequest(new { success = false, message = "Không thể gửi OTP. Vui lòng thử lại sau." });
+        }
+
+        /// <summary>
+        /// Xác minh mã OTP từ số điện thoại
+        /// </summary>
+        [HttpPost("Verify-Phone-Otp")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> VerifyPhoneOtp([FromBody] VerifyPhoneOtpRequest request)
+        {
+            if (string.IsNullOrEmpty(request.PhoneNumber) || string.IsNullOrEmpty(request.OtpCode))
+            {
+                return BadRequest(new { success = false, message = "Số điện thoại và mã OTP không được để trống" });
+            }
+
+            // Validate SĐT
+            var validation = _phoneVerification.Validate(request.PhoneNumber);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { success = false, message = validation.Message });
+            }
+
+            // Verify OTP
+            var result = await _phoneOtpService.VerifyOtpAsync(validation.FormattedNumber!, request.OtpCode);
+
+            if (result.Success)
+            {
+                _logger.LogInformation($"Phone verified: {validation.FormattedNumber}");
+                return Ok(new
+                {
+                    success = true,
+                    message = "Xác thực số điện thoại thành công!",
+                    phoneNumber = validation.FormattedNumber,
+                    carrier = validation.Carrier
+                });
+            }
+
+            return BadRequest(new { success = false, message = result.Message });
+        }
+
+        // DTOs cho Phone OTP
+        public class SendPhoneOtpRequest
+        {
+            public string PhoneNumber { get; set; } = string.Empty;
+        }
+
+        public class VerifyPhoneOtpRequest
+        {
+            public string PhoneNumber { get; set; } = string.Empty;
+            public string OtpCode { get; set; } = string.Empty;
+        }
+
         public class VerifyOtpRequest
         {
-            public string Email { get; set; }
-            public string Code { get; set; }
+            public string Email { get; set; } = string.Empty;
+            public string Code { get; set; } = string.Empty;
         }
         #endregion
 
-
-
+        #endregion
     }
 }
