@@ -23,6 +23,7 @@ namespace Pharmacy_API.Context
         public virtual DbSet<RolePolicy> RolePolicies { get; set; }
         public virtual DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
         public virtual DbSet<UserOtp> UserOtps { get; set; }
+        public virtual DbSet<PhoneOtp> PhoneOtps { get; set; }  // ← THÊM DÒNG NÀY
         public virtual DbSet<Payment> Payments { get; set; }
         public virtual DbSet<Order> Orders { get; set; }
         public virtual DbSet<OrderDetail> OrderDetails { get; set; }
