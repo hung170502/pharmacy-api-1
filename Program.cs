@@ -278,6 +278,10 @@ builder.Services.AddScoped<IPolicyPermissionRepository, PolicyPermissionReposito
 builder.Services.AddScoped<IRolePolicyRepository, RolePolicyRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
+// Phone Verification
+builder.Services.AddScoped<IPhoneVerificationService, PhoneVerificationService>();
+builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
+
 // Catalog
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
@@ -343,7 +347,6 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// ⚠️ BỎ TOÀN BỘ PHẦN CẤU HÌNH STATIC FILES CŨ (wwwroot/uploads)
 // Vì giờ ảnh đã được lưu trên Cloudinary, không cần local nữa
 app.UseStaticFiles();
 

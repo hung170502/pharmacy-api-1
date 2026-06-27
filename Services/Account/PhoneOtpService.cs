@@ -3,12 +3,14 @@ using Microsoft.Extensions.Logging;
 using Pharmacy_API.Context;
 using Pharmacy_API.Dtos.Account;
 using Pharmacy_API.Models.Account;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http.Json;
 
 namespace Pharmacy_API.Services.Account
 {
     public interface IPhoneOtpService
     {
-        Task<SendPhoneOtpResponse> GenerateOtpAsync(string phoneNumber, string? userId = null);  // ← SỬA
+        Task<SendPhoneOtpResponse> GenerateOtpAsync(string phoneNumber, string? userId = null);
         Task<VerifyPhoneOtpResponse> VerifyOtpAsync(string phoneNumber, string code);
         Task<bool> IsPhoneVerifiedAsync(string phoneNumber);
     }
@@ -17,20 +19,29 @@ namespace Pharmacy_API.Services.Account
     {
         private readonly AccountContext _context;
         private readonly ILogger<PhoneOtpService> _logger;
+        private readonly IConfiguration _configuration;
+        private readonly HttpClient _httpClient;
 
-        public PhoneOtpService(AccountContext context, ILogger<PhoneOtpService> logger)
+        public PhoneOtpService(
+            AccountContext context,
+            ILogger<PhoneOtpService> logger,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _configuration = configuration;
+            _httpClient = new HttpClient();
         }
 
-        public async Task<SendPhoneOtpResponse> GenerateOtpAsync(string phoneNumber, string? userId = null)  // ← SỬA
+        public async Task<SendPhoneOtpResponse> GenerateOtpAsync(string phoneNumber, string? userId = null)
         {
+            // Xóa OTP cũ
             var oldOtps = await _context.PhoneOtps
                 .Where(o => o.PhoneNumber == phoneNumber && !o.IsUsed)
                 .ToListAsync();
             _context.PhoneOtps.RemoveRange(oldOtps);
 
+            // Tạo OTP mới 6 số
             var code = new Random().Next(100000, 999999).ToString();
             var otpRecord = new PhoneOtp
             {
@@ -45,16 +56,18 @@ namespace Pharmacy_API.Services.Account
             _context.PhoneOtps.Add(otpRecord);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"📱 Generated OTP {code} for {phoneNumber}");
+            _logger.LogInformation($"📱 OTP {code} created for {phoneNumber}");
 
-            await Task.CompletedTask;
+            // TODO: Sau này có Zalo OA thì gửi OTP qua Zalo ở đây
+            // await SendZaloOtpAsync(phoneNumber, code);
 
             return new SendPhoneOtpResponse
             {
                 Success = true,
                 Message = "Mã OTP đã được tạo thành công",
                 ExpiresInMinutes = 5,
-                Otp = code
+                Otp = code,        // Hiển thị OTP trên màn hình
+                //ZaloLink = null
             };
         }
 
@@ -104,5 +117,11 @@ namespace Pharmacy_API.Services.Account
                     o.IsUsed &&
                     o.CreatedAt > DateTime.UtcNow.AddDays(-30));
         }
+
+        // TODO: Sau này có Zalo OA thì bỏ comment hàm này
+        // private async Task<bool> SendZaloOtpAsync(string phoneNumber, string otpCode)
+        // {
+        //     // Gửi OTP qua Zalo OA
+        // }
     }
 }

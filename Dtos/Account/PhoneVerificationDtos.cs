@@ -55,9 +55,8 @@ namespace Pharmacy_API.Dtos.Account
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
         public int ExpiresInMinutes { get; set; } = 5;
-
-        // ⚠️ Chỉ dùng trong development/test
         public string? Otp { get; set; }
+        //public string? ZaloLink { get; set; }  
     }
 
     /// <summary>
